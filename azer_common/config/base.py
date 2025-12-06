@@ -132,7 +132,7 @@ class CustomBaseConfig(PydanticBaseSettings):
     def load_configs_from_dir(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         try:
             # 计算配置目录绝对路径
-            config_dir = cls.get_project_root() / "app" / cls.config_dir
+            config_dir = cls.get_project_root() / cls.config_dir
             config_dir = config_dir.resolve()
 
             # 线程安全的缓存加载
