@@ -59,18 +59,21 @@ class CustomBaseConfig(PydanticBaseSettings):
         main_path = cls._get_main_py_path()
         if main_path:
             root_path = main_path.parent.resolve()
+            print(f"✅ 通过main.py获取项目根: {root_path}")
             logger.debug(f"✅ 通过main.py获取项目根: {root_path}")
             return root_path
 
         # 3. 第三优先级：工作目录（PyCharm/容器默认）
         cwd = Path(os.getcwd()).resolve()
         if cwd.is_dir():
+            print(f"✅ 通过工作目录(CWD)获取项目根: {cwd}")
             logger.debug(f"✅ 通过工作目录(CWD)获取项目根: {cwd}")
             return cwd
 
         # 4. 兜底：原有文件层级推导（仅兼容旧场景）
         fallback_root = Path(__file__).resolve().parents[3]
         if fallback_root.is_dir():
+            print(f"⚠️  仅能通过兜底路径获取项目根: {fallback_root}")
             logger.warning(f"⚠️  仅能通过兜底路径获取项目根: {fallback_root}")
             return fallback_root
 
