@@ -181,6 +181,23 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             route = route.rstrip("/")  # 统一去除末尾斜杠
             self.valid_exclude_routes.append(route)
 
+        # 3. 预处理敏感请求头（转小写，避免大小写不匹配）
+        self.valid_sensitive_headers = [h.lower() for h in self.log_config.sensitive_headers]
+
+    def filter_sensitive_headers(self, headers: dict) -> dict:
+        """过滤请求头中的敏感字段（保留Bearer前缀）"""
+        filtered = {}
+        for key, value in headers.items():
+            if key.lower() in self.valid_sensitive_headers:
+                if key.lower() == "authorization" and value.startswith("Bearer "):
+                    # 保留Bearer前缀，屏蔽后续Token
+                    filtered[key] = "Bearer ***"
+                else:
+                    filtered[key] = "***"
+            else:
+                filtered[key] = value
+        return filtered
+
     @classmethod
     def filter_sensitive_data(
             cls,
@@ -273,8 +290,10 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             return response
 
+        raw_headers = dict(request.headers)
+        filtered_headers = self.filter_sensitive_headers(raw_headers)
         self.service_logger.info(f"Request: {request.method} {request.url}")
-        self.service_logger.info(f"Headers: {dict(request.headers)}")
+        self.service_logger.info(f"Headers: {dict(filtered_headers)}")
 
         if self._is_route_match(path, self.valid_sensitive_routes):
             self.service_logger.info("Request body: [SENSITIVE ROUTE SKIPPED]")

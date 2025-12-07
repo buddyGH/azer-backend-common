@@ -447,6 +447,10 @@ class LoggingConfig(CustomBaseConfig):
     format: str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     interval: int = 1  # 日志轮换时间间隔，单位为小时
     backup_count: int = 7  # 保留的备份文件数量
+    sensitive_headers: List[str] = Field(
+        default_factory=list,
+        description="需要脱敏的请求头字段"
+    )
     sensitive_fields: List[str] = Field(  # 新增敏感字段配置
         default_factory=list,
         description="需要脱敏的字段名列表（不区分大小写）"
