@@ -14,7 +14,6 @@ EnvironmentType = Literal["development", "test", "production"]
 # 定义限流器类型字面量
 LimitType = Literal["ip", "id"]
 
-
 logging.basicConfig(
     level=logging.INFO,
     handlers=[logging.StreamHandler(stream=sys.stdout)],  # 仅用控制台处理器
@@ -193,6 +192,7 @@ class ServerConfig(CustomBaseConfig):
     服务器相关的配置类，包含 API 前缀、标题、版本和运行环境。
     """
     config_key = "server"
+    api_root: str = "/api/v1"
     api_prefix: str = ''
     api_title: str = 'Default Title'
     api_version: str = 'v1'
