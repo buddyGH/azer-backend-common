@@ -281,21 +281,32 @@ def log_task_message(
     :param logger: 自定义Logger（优先使用）
     :param log_config: 通用日志配置（无logger时使用）
     """
-    # 无logger时，自动创建task_logger
-    if logger is None:
-        if log_config is None:
-            # 兜底：使用默认配置创建临时logger
-            log_config = LoggingConfig()
-            temp_logger = logging.getLogger("default_logger_hint")
-            temp_logger.warning(
-                "未传入logger和log_config，自动使用微服务侧默认路径创建task_logger\n"
-                "建议显式传入logger或配置LoggingConfig的task_path！"
-            )
-        logger = create_task_logger(log_config)
+    # 优先级1：使用传入的自定义logger
+    if logger is not None:
+        target_logger = logger
+    else:
+        # 优先级2：查找已初始化的task_logger（避免重复创建）
+        existing_task_logger = logging.getLogger("task_logger")
+        # 判断是否是"有效"的logger（有处理器、非默认级别）
+        if existing_task_logger.handlers:
+            target_logger = existing_task_logger
+        else:
+            # 优先级3：无有效实例时，创建新的task_logger
+            if log_config is None:
+                # 兜底：使用默认配置创建临时logger
+                log_config = LoggingConfig()
+                temp_logger = logging.getLogger("default_logger_hint")
+                temp_logger.warning(
+                    "未传入logger和log_config，自动使用微服务侧默认路径创建task_logger\n"
+                    "建议显式传入logger或配置LoggingConfig的task_path！"
+                )
+            target_logger = create_task_logger(log_config)
 
     # 获取调用此函数上一帧栈信息，以提取任务的函数名
     frame = inspect.currentframe().f_back
     function_name = frame.f_code.co_name  # 获取任务的函数名
+    # 安全清理栈帧（避免内存泄漏）
+    del frame
 
     # 获取当前时间戳
     current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -306,4 +317,4 @@ def log_task_message(
     )
 
     # 将详细日志信息记录到日志文件
-    logger.info(detailed_message)
+    target_logger.info(detailed_message)
