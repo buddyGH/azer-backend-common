@@ -6,7 +6,6 @@ import time
 import tempfile
 from logging.handlers import TimedRotatingFileHandler
 from typing import List, Union, Optional
-from pydantic import BaseModel
 from urllib.parse import parse_qs
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -50,8 +49,8 @@ def get_microservice_default_log_path(log_type: str) -> str:
 
 
 def get_effective_log_path(
-    config_path: Optional[str],
-    log_type: str
+        config_path: Optional[str],
+        log_type: str
 ) -> str:
     """
     获取最终生效的日志路径（优先级：微服务显式配置 > 微服务默认路径 > 系统临时目录）
@@ -66,9 +65,9 @@ def get_effective_log_path(
 
 # 公共日志配置函数
 def setup_logger(
-    log_name: str,
-    log_config: LoggingConfig,  # 注入通用配置（核心解耦点）
-    log_file_path: Optional[str] = None
+        log_name: str,
+        log_config: LoggingConfig,  # 注入通用配置（核心解耦点）
+        log_file_path: Optional[str] = None
 ) -> logging.Logger:
     """
     设置日志记录器，动态决定日志输出到文件或标准输出
@@ -153,28 +152,34 @@ def create_task_logger(log_config: LoggingConfig) -> logging.Logger:
 class LoggingMiddleware(BaseHTTPMiddleware):
     """
     中间件，用于记录每个HTTP请求的详细信息和响应信息
+    支持：
+    1. exclude_routes：完全排除指定路由的所有日志
+    2. sensitive_routes：仅跳过指定路由的请求体日志
+    3. sensitive_fields：过滤请求体中的敏感字段值
     """
 
     def __init__(self, app: ASGIApp, log_config: LoggingConfig):
         super().__init__(app)
         self.log_config = log_config
         self.service_logger = create_service_logger(log_config)
-        # 预处理
+
+        # 1. 预处理敏感路由（仅跳过请求体）
         self.valid_sensitive_routes = []
         for raw_route in self.log_config.sensitive_routes:
-            # 1. 清理空格和空值
             route = raw_route.strip()
             if not route:
                 continue
-
-            # 2. 统一去除末尾斜杠
-            route = route.rstrip("/")
-
-            # 3. 处理通配符（如 "/auth*" → "/auth"）
-            if route.endswith("*"):
-                route = route[:-1]
-
+            route = route.rstrip("/")  # 统一去除末尾斜杠
             self.valid_sensitive_routes.append(route)
+
+        # 2. 预处理排除路由（完全不记录日志）
+        self.valid_exclude_routes = []
+        for raw_route in self.log_config.exclude_routes:
+            route = raw_route.strip()
+            if not route:
+                continue
+            route = route.rstrip("/")  # 统一去除末尾斜杠
+            self.valid_exclude_routes.append(route)
 
     @classmethod
     def filter_sensitive_data(
@@ -232,6 +237,28 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             self.service_logger.error(f"Body processing error: {str(e)}")
             return "[ERROR PROCESSING BODY]"
 
+    @staticmethod
+    def _is_route_match(self, request_path: str, target_routes: List[str]) -> bool:
+        """
+        通用路由匹配逻辑（支持精确匹配 + 通配符匹配）
+        :param request_path: 请求实际路径（如 /probes/health）
+        :param target_routes: 配置的目标路由列表（如 ["/probes*", "/auth"]）
+        :return: 是否匹配
+        """
+        # 统一处理请求路径（去末尾斜杠）
+        normalized_path = request_path.rstrip("/")
+
+        for route in target_routes:
+            # 通配符匹配（如 /probes* 匹配 /probes/health、/probes/liveness）
+            if route.endswith("*"):
+                prefix = route[:-1]
+                if normalized_path.startswith(prefix):
+                    return True
+            # 精确匹配（如 /probes 匹配 /probes 或 /probes/）
+            elif normalized_path == route:
+                return True
+        return False
+
     async def dispatch(
             self,
             request: Request,
@@ -241,23 +268,21 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
         path = request.url.path
 
-        # 记录基础信息
+        # 优先判断是否为排除路由，匹配则直接跳过所有日志
+        if self._is_route_match(path, self.valid_exclude_routes):
+            response = await call_next(request)
+            return response
+
         self.service_logger.info(f"Request: {request.method} {request.url}")
         self.service_logger.info(f"Headers: {dict(request.headers)}")
 
-        # 敏感路径处理
-        if any(
-                (route == path) or  # 精确匹配
-                (route.endswith("*") and path.startswith(route[:-1]))  # 通配符匹配
-                for route in self.valid_sensitive_routes
-        ):
+        if self._is_route_match(path, self.valid_sensitive_routes):
             self.service_logger.info("Request body: [SENSITIVE ROUTE SKIPPED]")
         else:
             if request.method in ["POST", "PUT", "PATCH"]:
                 filtered_body = await self._process_body(request)
                 self.service_logger.info(f"Filtered Request Body: {filtered_body}")
 
-        # 处理请求并记录响应
         response = await call_next(request)
         process_time = time.time() - start_time
 

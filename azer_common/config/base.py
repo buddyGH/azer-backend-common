@@ -455,6 +455,10 @@ class LoggingConfig(CustomBaseConfig):
         default_factory=list,
         description="需要跳过请求体记录的路由路径"
     )
+    exclude_routes: List[str] = Field(  # 新增敏感路由配置
+        default_factory=list,
+        description="不需要需要记录的路由路径"
+    )
 
     def __init__(self, **data):
         super().__init__(**data)
