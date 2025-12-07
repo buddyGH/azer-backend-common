@@ -330,7 +330,7 @@ class TortoiseConfig(CustomBaseConfig):
                     "default_connection": "master",
                 }
             },
-            "routers": ["app.common.databases.router.DatabaseRouter"],
+            "routers": ["azer_common.databases.router.DatabaseRouter"],
             "use_tz": self.use_tz,
             "timezone": self.timezone,
             "pool_recycle": self.pool_recycle
