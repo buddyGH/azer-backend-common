@@ -61,7 +61,7 @@ def create_rate_limiter(
     limit_type: Optional[str] = None,
     identifier: Optional[Callable[[Request], Awaitable[str]]] = None,
     callback: Optional[Callable[[Request, Response, int], Awaitable[None]]] = None
-) -> Callable[[], Awaitable[None]]:
+) -> Callable[[Optional[int], Optional[str]], RateLimiter]:
     """
     解耦后的动态限速器创建函数（公共包核心）
     :param config: 通用限速配置（微服务侧注入）
@@ -71,32 +71,41 @@ def create_rate_limiter(
     :param callback: 自定义429回调函数（覆盖默认）
     :return: FastAPI依赖项
     """
-    # 1. 开发环境跳过限速（基于注入的配置，而非硬编码）
+    # 1. 开发环境跳过限速（返回空依赖）
     if config.environment == "development":
         async def no_op_dependency(request: Request, response: Response):
             return None
-        return no_op_dependency
 
-    # 2. 优先使用传入参数，否则用配置默认值（解耦微服务配置路径）
-    final_times = times or config.default_times
-    final_limit_type = limit_type or config.default_limit_type
+        # 兼容动态传参逻辑：返回一个“接收参数但无效果”的函数
+        def _rate_limiter(_times: Optional[int] = None, _limit_type: Optional[str] = None):
+            return no_op_dependency
 
-    # 3. 选择标识符函数（解耦用户ID识别逻辑）
-    if final_limit_type == "id":
-        final_identifier = identifier or default_user_id_identifier
-    else:
-        final_identifier = identifier or default_ip_identifier
+        return _rate_limiter
 
-    # 4. 选择回调函数
-    final_callback = callback or default_429_callback
+    # 2. 生产/测试环境：返回可动态传参的限速器生成函数
+    def _rate_limiter(
+            _times: Optional[int] = None,  # 接口层动态传入的次数
+            _limit_type: Optional[str] = None  # 接口层动态传入的类型
+    ) -> RateLimiter:  # 明确返回 RateLimiter 实例
+        # 优先级：接口层传参 > 创建时传参 > 配置默认值
+        final_times = _times or times or config.default_times
+        final_limit_type = _limit_type or limit_type or config.default_limit_type
 
-    # 5. 创建并返回限速器依赖
-    return RateLimiter(
-        times=final_times,
-        seconds=60,
-        identifier=final_identifier,
-        callback=final_callback
-    )
+        # 选择标识符函数
+        if final_limit_type == "id":
+            final_identifier = identifier or default_user_id_identifier
+        else:
+            final_identifier = identifier or default_ip_identifier
+
+        # 返回真正的 RateLimiter 依赖实例
+        return RateLimiter(
+            times=final_times,
+            seconds=60,
+            identifier=final_identifier,
+            callback=callback or default_429_callback
+        )
+
+    return _rate_limiter
 
 
 def get_rate_limiter_by_level(
