@@ -42,7 +42,7 @@ def inject_config_to_env(
     fields = config_instance.model_fields
     for field_name, field_info in fields.items():
         # 跳过私有字段、ClassVar 字段
-        if field_name.startswith("_") or field_info.is_class_var:
+        if field_name.startswith("_"):
             continue
 
         # 读取字段的最终值（实例化后的值，含 __init__ 重写/验证器修改后的值）
