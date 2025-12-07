@@ -238,7 +238,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             return "[ERROR PROCESSING BODY]"
 
     @staticmethod
-    def _is_route_match(self, request_path: str, target_routes: List[str]) -> bool:
+    def _is_route_match(request_path: str, target_routes: List[str]) -> bool:
         """
         通用路由匹配逻辑（支持精确匹配 + 通配符匹配）
         :param request_path: 请求实际路径（如 /probes/health）
