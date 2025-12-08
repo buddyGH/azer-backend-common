@@ -1,6 +1,5 @@
 import importlib
 import json
-import os
 from pathlib import Path
 from fastapi import FastAPI
 
@@ -12,15 +11,8 @@ def load_docs(module_name, action_name):
     :param action_name: API 动作名称，用于找到特定 API 的文档
     :return: 返回从文档文件中加载的 summary, description, responses
     """
-    # 读取环境变量 SERVER_API_PREFIX
-    api_prefix = os.getenv("SERVER__API_PREFIX")
 
-    # 读取不到：打印警告并终止后续，返回空值
-    if api_prefix is None:
-        print("未读取到环境变量 SERVER_API_PREFIX，跳过文档加载")
-        return "", "", {}
-
-    docs_module_name = f"docs.{api_prefix}.{module_name}_docs"
+    docs_module_name = f"docs.{module_name}_docs"
 
     try:
         # 动态导入对应的 _docs 模块
@@ -53,17 +45,9 @@ def export_openapi(
     :param file_path: 保存 OpenAPI 规范的文件路径
     :return: 返回 OpenAPI 规范的字典形式
     """
-    # 读取环境变量 SERVER_API_PREFIX
-    api_prefix = os.getenv("SERVER_API_PREFIX")
-
-    # 读取不到：打印警告并终止后续，返回空字典
-    if api_prefix is None:
-        print("未读取到环境变量 SERVER_API_PREFIX，跳过 OpenAPI 导出")
-        return {}
-
     # 初始化默认文件路径
     if file_path is None:
-        file_path = f"docs/{api_prefix}/openapi.json"
+        file_path = f"docs/openapi.json"
 
     try:
         openapi_schema = app.openapi()
