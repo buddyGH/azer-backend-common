@@ -214,7 +214,7 @@ class ServerConfig(CustomBaseConfig):
             raise ValueError(f"运行环境仅支持 {allowed_envs}，当前值: {v}")
         return v
 
-    model_config = SettingsConfigDict(env_prefix='SERVER_')
+    model_config = SettingsConfigDict(env_prefix='SERVER__')
 
 
 class UvicornConfig(CustomBaseConfig):
@@ -238,7 +238,7 @@ class UvicornConfig(CustomBaseConfig):
         if values.get("reload") is None:
             self.reload = self.environment != 'production'
 
-    model_config = SettingsConfigDict(env_prefix='UVICORN_')
+    model_config = SettingsConfigDict(env_prefix='UVICORN__')
 
 
 class DatabaseConfig(PydanticBaseSettings):
@@ -365,7 +365,7 @@ class TortoiseConfig(CustomBaseConfig):
             "pool_recycle": self.pool_recycle
         }
 
-    model_config = SettingsConfigDict(env_prefix='TORTOISE_')
+    model_config = SettingsConfigDict(env_prefix='TORTOISE__')
 
 
 class RedisSingleConfig(PydanticBaseSettings):
@@ -397,7 +397,7 @@ class RedisConfig(CustomBaseConfig):
     master: RedisSingleConfig = Field(default_factory=RedisSingleConfig)
     replica: RedisSingleConfig = Field(default_factory=RedisSingleConfig)
 
-    model_config = SettingsConfigDict(env_prefix='REDIS_')
+    model_config = SettingsConfigDict(env_prefix='REDIS__')
 
 
 class JWTConfig(CustomBaseConfig):
@@ -431,7 +431,7 @@ class JWTConfig(CustomBaseConfig):
             raise ValueError(f"JWT算法仅支持{allowed_algos}，当前为{v}")
         return v
 
-    model_config = SettingsConfigDict(env_prefix='JWT_')
+    model_config = SettingsConfigDict(env_prefix='JWT__')
 
 
 class RateLimiterConfig(CustomBaseConfig):
@@ -451,7 +451,7 @@ class RateLimiterConfig(CustomBaseConfig):
             raise ValueError(f"限速类型仅支持 {allowed_types}，当前值: {v}")
         return v
 
-    model_config = SettingsConfigDict(env_prefix='RATE_LIMITER_')
+    model_config = SettingsConfigDict(env_prefix='RATE_LIMITER__')
 
 
 class LoggingConfig(CustomBaseConfig):
@@ -484,7 +484,7 @@ class LoggingConfig(CustomBaseConfig):
                 logger.info(f"创建日志目录: {log_dir}")
 
     model_config = SettingsConfigDict(
-        env_prefix='LOGGING_',
+        env_prefix='LOGGING__',
         json_schema_extra={
             "example": {
                 "sensitive_fields": ["password", "credit_card"],
