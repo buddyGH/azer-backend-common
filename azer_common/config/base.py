@@ -192,7 +192,7 @@ class ServerConfig(CustomBaseConfig):
     )
     api_prefix: str = Field(
         "",
-        pattern=r"^([a-zA-Z0-9/_-]+)*$"
+        pattern=r"^(/[a-zA-Z0-9/_-]+)*$"
     )
     api_title: str = Field(
         "Service-API-v789",
