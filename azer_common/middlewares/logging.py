@@ -90,10 +90,12 @@ def setup_logger(
             log_file_path,
             when='midnight',
             interval=log_config.interval,
-            backupCount=log_config.backup_count
+            backupCount=log_config.backup_count,
+            encoding='utf-8'
         )
     else:
         log_handler = logging.StreamHandler()
+        log_handler.stream.reconfigure(encoding='utf-8')
 
     log_handler.setFormatter(log_formatter)
 
@@ -225,16 +227,16 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         try:
             # JSON 数据处理
             if "application/json" in content_type:
-                json_body = json.loads(raw_body.decode("utf-8"))
+                json_body = json.loads(raw_body.decode(encoding="utf-8", errors="replace"))
                 filtered = self.filter_sensitive_data(
                     json_body,
                     self.log_config.sensitive_fields
                 )
-                return json.dumps(filtered)
+                return json.dumps(filtered, ensure_ascii=False)
 
             # 表单数据处理
             elif "application/x-www-form-urlencoded" in content_type:
-                form_data = parse_qs(raw_body.decode("utf-8"))
+                form_data = parse_qs(raw_body.decode(encoding="utf-8", errors="replace"))
                 filtered = {
                     k: ["***"] if k in self.log_config.sensitive_fields
                     else v
@@ -244,7 +246,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
             # 其他文本类型
             elif "text/" in content_type:
-                return raw_body.decode("utf-8", errors="replace")
+                return raw_body.decode(encoding="utf-8", errors="replace")
 
             # 二进制数据不记录
             else:
