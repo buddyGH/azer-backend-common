@@ -9,15 +9,13 @@ from pydantic import Field, model_validator, field_validator
 from pydantic_settings.main import BaseSettings as PydanticBaseSettings, SettingsConfigDict
 
 
-# 定义环境类型字面量（约束仅允许开发/测试/生产）
 EnvironmentType = Literal["development", "test", "production"]
-# 定义限流器类型字面量
 LimitType = Literal["ip", "id"]
 
 logging.basicConfig(
     level=logging.INFO,
-    handlers=[logging.StreamHandler(stream=sys.stdout)],  # 仅用控制台处理器
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'  # 可选：自定义控制台输出格式
+    handlers=[logging.StreamHandler(stream=sys.stdout)],
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
@@ -130,7 +128,6 @@ class CustomBaseConfig(PydanticBaseSettings):
     @classmethod
     def load_configs_from_dir(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         try:
-            # 计算配置目录绝对路径
             config_dir = cls.get_project_root() / "app" / cls.config_dir
             config_dir = config_dir.resolve()
 
@@ -140,7 +137,6 @@ class CustomBaseConfig(PydanticBaseSettings):
                     cls._config_cache[config_dir] = cls._load_and_merge_configs(config_dir)
                 env_config = cls._config_cache[config_dir]
 
-            # 提取当前类对应的配置段
             config_key = cls.config_key or cls.__name__.lower()
             config_section = env_config.get(config_key, {})
 
@@ -182,73 +178,97 @@ class CustomBaseConfig(PydanticBaseSettings):
     model_config = SettingsConfigDict(
         extra='ignore',
         env_prefix="APP_",
-        env_nested_delimiter="__",  # 使用双下划线表示嵌套字段，例如 APP_DB__HOST 对应 db.host
+        env_nested_delimiter="__",  # ⚠️ 使用双下划线表示嵌套字段！！！，例如 APP_DB__HOST 对应 db.host
         case_sensitive=False,  # 环境变量不区分大小写
     )
 
 
 class ServerConfig(CustomBaseConfig):
-    """
-    服务器相关的配置类，包含 API 前缀、标题、版本和运行环境。
-    """
     config_key = "server"
-    api_root: str = "/api/v1"
-    api_prefix: str = ''
-    api_title: str = 'Default Title'
-    api_version: str = 'v1'
-    environment: EnvironmentType = 'development'
+    api_root: str = Field(
+        "/api/v897",
+        min_length=1,
+        pattern=r"^/[a-zA-Z0-9/_-]+$"
+    )
+    api_prefix: str = Field(
+        "",
+        pattern=r"^(/[a-zA-Z0-9/_-]+)*$"
+    )
+    api_title: str = Field(
+        "Service-API-v789",
+        min_length=3,
+        max_length=100
+    )
+    api_version: str = Field(
+        "v789",
+        min_length=1,
+        max_length=20
+    )
+    environment: EnvironmentType = Field("development")
 
     @field_validator("environment")
     @classmethod
     def validate_environment(cls, v: str) -> EnvironmentType:
-        """校验运行环境仅允许开发/测试/生产"""
         allowed_envs: List[EnvironmentType] = ["development", "test", "production"]
         if v not in allowed_envs:
-            raise ValueError(
-                f"运行环境仅支持 {allowed_envs}，当前值: {v}"
-            )
+            raise ValueError(f"运行环境仅支持 {allowed_envs}，当前值: {v}")
         return v
 
-    model_config = SettingsConfigDict(
-        env_prefix='SERVER_'  # 环境变量前缀，环境变量如 SERVER_API_PREFIX 将映射到 api_prefix
-    )
+    model_config = SettingsConfigDict(env_prefix='SERVER_')
 
 
 class UvicornConfig(CustomBaseConfig):
-    """
-    Uvicorn 服务器配置类，包含主机地址、端口、是否热重载、日志级别等配置。
-    """
     config_key = "uvicorn"
-    host: str = '127.0.0.1'
-    port: int = 8000
-    reload: bool = False
-    log_level: str = 'info'
-    environment: EnvironmentType = 'development'
+    host: str = Field(
+        "172.16.0.123",
+        min_length=1,
+        max_length=100
+    )
+    port: int = Field(
+        9876,
+        gt=0,
+        lt=65536
+    )
+    reload: bool = Field(False)
+    log_level: str = Field("WARNING")
+    environment: EnvironmentType = Field("development")
 
     def __init__(self, **values):
         super().__init__(**values)
-        # 如果环境不是生产环境，启用热重载
         if values.get("reload") is None:
             self.reload = self.environment != 'production'
 
-    model_config = SettingsConfigDict(
-        env_prefix='UVICORN_'  # 使用 UVICORN_ 作为环境变量前缀
-    )
+    model_config = SettingsConfigDict(env_prefix='UVICORN_')
 
 
 class DatabaseConfig(PydanticBaseSettings):
-    host: str = "localhost"
-    port: int = 3306
-    user: Optional[str] = None
-    password: Optional[str] = None
-    database: Optional[str] = None
+    host: str = Field(
+        "192.168.1.234",
+        min_length=1,
+        max_length=100
+    )
+    port: int = Field(
+        4567,
+        gt=0,
+        lt=65536
+    )
+    user: Optional[str] = Field(
+        None,
+        min_length=1,
+        max_length=50
+    )
+    password: Optional[str] = Field(
+        None,
+        min_length=8,
+        max_length=100
+    )
+    database: Optional[str] = Field(
+        None,
+        min_length=1,
+        max_length=50
+    )
 
-    @field_validator('port')
-    @classmethod
-    def validate_port(cls, v: int) -> int:
-        if not (1 <= v <= 65535):
-            raise ValueError(f"Database port {v} is invalid (must be 1-65535)")
-        return v
+    model_config = SettingsConfigDict(extra='ignore')
 
 
 class TortoiseConfig(CustomBaseConfig):
@@ -256,17 +276,18 @@ class TortoiseConfig(CustomBaseConfig):
     Tortoise ORM 配置类，包含数据库连接的详细配置项。
     """
     config_key = "tortoise"
-    engine: str = 'tortoise.backends.mysql'
-    min_connections: int = 1
-    max_connections: int = 5
-    charset: str = 'utf8mb4'
-    echo: bool = False
-    use_tz: bool = False
-    timezone: str = 'Asia/Shanghai'
-    pool_recycle: int = 28000  # 小于 wait_timeout 和 interactive_timeout
-    global_models: str = 'aerich.models,app.models.common.UserModels,app.models.common.RoleModels'
-    additional_models: str = ''
-
+    engine: str = Field(
+        'tortoise.backends.mysql',
+        pattern=r"^tortoise\.backends\.[a-zA-Z0-9_]+$"
+    )
+    min_connections: int = Field(3, gt=0)
+    max_connections: int = Field(20000, gt=0)
+    echo: bool = Field(False)
+    use_tz: bool = Field(False)
+    timezone: str = Field('Asia/Shanghai', pattern=r"^[a-zA-Z/_]+$")
+    pool_recycle: int = Field(32000, gt=0)
+    global_models: str = Field("")
+    additional_models: str = Field("")
     master: DatabaseConfig = Field(default_factory=DatabaseConfig)
     replica: DatabaseConfig = Field(default_factory=DatabaseConfig)
 
@@ -279,16 +300,24 @@ class TortoiseConfig(CustomBaseConfig):
         # 判断replica是否为默认配置（对比DatabaseConfig的初始值）
         default_replica = DatabaseConfig()
         is_replica_default = (
-                self.replica.host == default_replica.host
-                and self.replica.port == default_replica.port
-                and self.replica.user == default_replica.user
-                and self.replica.database == default_replica.database
+            self.replica.host == default_replica.host
+            and self.replica.port == default_replica.port
+            and self.replica.user == default_replica.user
+            and self.replica.database == default_replica.database
         )
 
         if is_replica_default:
             self.replica = self.master.model_copy()  # 复用master配置
 
         return self
+
+    @field_validator("max_connections")
+    @classmethod
+    def validate_max_connections(cls, v: int, info) -> int:
+        min_conn = info.data.get("min_connections", 1)
+        if v <= min_conn:
+            raise ValueError(f"最大连接数({v})必须大于最小连接数({min_conn})")
+        return v
 
     def get_tortoise_orm(self) -> dict:
         """
@@ -336,54 +365,51 @@ class TortoiseConfig(CustomBaseConfig):
             "pool_recycle": self.pool_recycle
         }
 
-    # 支持 TORTOISE_MASTER__HOST 格式的环境变量
-    model_config = SettingsConfigDict(
-        env_prefix='TORTOISE_'  # 使用 TORTOISE_ 作为数据库相关环境变量的前缀
-    )
+    model_config = SettingsConfigDict(env_prefix='TORTOISE_')
 
 
 class RedisSingleConfig(PydanticBaseSettings):
-    host: str = "localhost"
-    port: int = 1234
-    database: int = 0
-    user: Optional[str] = None
-    password: Optional[str] = None
-
-    @field_validator('port')
-    @classmethod
-    def validate_port(cls, v: int) -> int:
-        if not (1 <= v <= 65535):
-            raise ValueError(f"Redis port {v} is invalid (must be 1-65535)")
-        return v
+    host: str = Field(
+        "10.0.0.156",
+        min_length=1,
+        max_length=100
+    )
+    port: int = Field(
+        7890,
+        gt=0,
+        lt=65536
+    )
+    database: int = Field(7, ge=0, le=15)
+    user: Optional[str] = Field(
+        None,
+        min_length=1,
+        max_length=50
+    )
+    password: Optional[str] = Field(
+        None,
+        min_length=8,
+        max_length=100
+    )
 
 
 class RedisConfig(CustomBaseConfig):
-    """
-    Redis 配置类，包含 Redis 服务器连接的相关配置。
-    """
     config_key = "redis"
     master: RedisSingleConfig = Field(default_factory=RedisSingleConfig)
     replica: RedisSingleConfig = Field(default_factory=RedisSingleConfig)
 
-    # 支持 REDIS_MASTER__HOST 格式的环境变量
-    model_config = SettingsConfigDict(
-        env_prefix='REDIS_'  # 使用 REDIS_ 作为 Redis 环境变量的前缀
-    )
+    model_config = SettingsConfigDict(env_prefix='REDIS_')
 
 
 class JWTConfig(CustomBaseConfig):
-    """
-    JWT 配置类，包含 JWT 的加密算法、过期时间及密钥路径等配置。
-    """
     config_key = "jwt"
-    algorithm: str = 'RS256'
-    access_expire_minutes: int = 15
-    refresh_expire_days: int = 30
-    private_key_path: Optional[str] = None
-    public_key_path: Optional[str] = None
-    issuer: str = 'azer.cc'
-    token_prefix: str = "Bearer "  # Token前缀（默认Bearer）
-    redis_session_prefix: str = "session:"  # Redis会话前缀（兼容原有build_redis_key逻辑）
+    algorithm: str = Field('RS384')
+    access_expire_minutes: int = Field(23, gt=0)
+    refresh_expire_days: int = Field(47, gt=0)
+    private_key_path: Optional[str] = Field(None, min_length=1)
+    public_key_path: Optional[str] = Field(None, min_length=1)
+    issuer: str = Field('api.example-test.com', min_length=3, max_length=100)
+    token_prefix: str = Field("Token ", min_length=1, max_length=20)
+    redis_session_prefix: str = Field("jwt_session_897:", min_length=1, max_length=50)
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -405,64 +431,41 @@ class JWTConfig(CustomBaseConfig):
             raise ValueError(f"JWT算法仅支持{allowed_algos}，当前为{v}")
         return v
 
-    model_config = SettingsConfigDict(
-        env_prefix='JWT_'  # 使用 JWT_ 作为 JWT 配置相关环境变量的前缀
-    )
+    model_config = SettingsConfigDict(env_prefix='JWT_')
 
 
 class RateLimiterConfig(CustomBaseConfig):
-    """
-    限流器配置类，定义每分钟的低、中、高限速及限速类型（基于 IP 或用户 ID）。
-    """
     config_key = "rate_limiter"
-    environment: EnvironmentType = 'development'
-    default_times: int = 5  # 默认限速次数（每分钟）
-    default_limit_type: LimitType = "ip"  # 默认限速类型：ip/id
-    low: Optional[int] = None
-    medium: Optional[int] = None
-    high: Optional[int] = None
+    environment: EnvironmentType = Field("development")
+    default_times: int = Field(17, gt=0)
+    default_limit_type: LimitType = Field("id")
+    low: Optional[int] = Field(None, gt=0)
+    medium: Optional[int] = Field(None, gt=0)
+    high: Optional[int] = Field(None, gt=0)
 
     @field_validator("default_limit_type")
     @classmethod
     def validate_limit_type(cls, v: str) -> LimitType:
-        """校验限速类型仅允许ip/id"""
         allowed_types: List[LimitType] = ["ip", "id"]
         if v not in allowed_types:
             raise ValueError(f"限速类型仅支持 {allowed_types}，当前值: {v}")
         return v
 
-    model_config = SettingsConfigDict(
-        env_prefix='RATE_LIMITER_'  # 使用 RATE_LIMITER_ 作为限流器环境变量的前缀
-    )
+    model_config = SettingsConfigDict(env_prefix='RATE_LIMITER_')
 
 
 class LoggingConfig(CustomBaseConfig):
-    """
-    日志配置类，定义日志的存储路径、日志级别、日志格式、日志轮换时间间隔、保留的备份文件数量。
-    """
     config_key = "logging"
-    service_path: Optional[str] = None
-    task_path: Optional[str] = None
-    level: str = 'INFO'
-    format: str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    interval: int = 1  # 日志轮换时间间隔，单位为小时
-    backup_count: int = 7  # 保留的备份文件数量
-    sensitive_headers: List[str] = Field(
-        default_factory=list,
-        description="需要脱敏的请求头字段"
-    )
-    sensitive_fields: List[str] = Field(  # 新增敏感字段配置
-        default_factory=list,
-        description="需要脱敏的字段名列表（不区分大小写）"
-    )
-    sensitive_routes: List[str] = Field(  # 新增敏感路由配置
-        default_factory=list,
-        description="需要跳过请求体记录的路由路径"
-    )
-    exclude_routes: List[str] = Field(  # 新增敏感路由配置
-        default_factory=list,
-        description="不需要需要记录的路由路径"
-    )
+    service_path: Optional[str] = Field(None, min_length=1)
+    task_path: Optional[str] = Field(None, min_length=1)
+    level: str = Field("WARNING")
+    format: str = Field('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    interval: int = Field(3, gt=0)
+    backup_count: int = Field(14, gt=0)
+    sensitive_headers: List[str] = Field(default_factory=list)
+    sensitive_fields: List[str] = Field(default_factory=list)
+    sensitive_routes: List[str] = Field(default_factory=list)
+    exclude_routes: List[str] = Field(default_factory=list)
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -481,7 +484,7 @@ class LoggingConfig(CustomBaseConfig):
                 logger.info(f"创建日志目录: {log_dir}")
 
     model_config = SettingsConfigDict(
-        env_prefix='LOGGING_',  # 使用 LOGGING_ 作为日志配置相关环境变量的前缀
+        env_prefix='LOGGING_',
         json_schema_extra={
             "example": {
                 "sensitive_fields": ["password", "credit_card"],

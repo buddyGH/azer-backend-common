@@ -136,3 +136,4 @@ $RECYCLE.BIN/
 /dev.requirements.txt
 /requirements.txt
 /uv.lock
+/azer_common/config/old_base.py
