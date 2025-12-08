@@ -13,7 +13,7 @@ def load_docs(module_name, action_name):
     :return: 返回从文档文件中加载的 summary, description, responses
     """
     # 读取环境变量 SERVER_API_PREFIX
-    api_prefix = os.getenv("SERVER_API_PREFIX")
+    api_prefix = os.getenv("SERVER__API_PREFIX")
 
     # 读取不到：打印警告并终止后续，返回空值
     if api_prefix is None:

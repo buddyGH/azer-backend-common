@@ -11,7 +11,7 @@ def dprint(*args):
     """
 
     # 读取环境变量 SERVER_ENVIRONMENT，无值则返回None
-    server_env = os.getenv("SERVER_ENVIRONMENT")
+    server_env = os.getenv("SERVER__ENVIRONMENT")
 
     # 读取不到环境变量：打印提示到控制台，不执行后续逻辑
     if server_env is None:
