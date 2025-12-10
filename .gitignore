@@ -56,7 +56,7 @@ poetry.lock
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow
 __pypackages__/
 
-# Unit test / coverage reports
+# Unit tests / coverage reports
 htmlcov/
 .tox/
 .nox/
@@ -137,3 +137,4 @@ $RECYCLE.BIN/
 /requirements.txt
 /uv.lock
 /azer_common/config/old_base.py
+/tests/

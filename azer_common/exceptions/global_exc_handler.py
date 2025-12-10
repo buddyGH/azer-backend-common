@@ -34,8 +34,8 @@ def register_exception_handlers(app: FastAPI):
 
     @app.exception_handler(ValueError)
     async def value_error_handler(request: Request, exc: ValueError):
-        error_data = response(result={"detail": str(exc)}, code=422, message="无效参数")
-        return JSONResponse(status_code=422, content=error_data)
+        error_data = response(result={"detail": str(exc)}, code=500, message="无效参数")
+        return JSONResponse(status_code=500, content=error_data)
 
     # ========== 优化 DoesNotExist 处理器 ==========
     @app.exception_handler(ObjectDoesNotExistError)

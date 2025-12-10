@@ -3,7 +3,7 @@ from typing import List, Optional
 import jwt
 from fastapi import HTTPException, Request, status
 from tortoise.exceptions import DoesNotExist
-from azer_common.models.UserModels import User
+from azer_common.models.user.model import User
 from azer_common.utils.device_info import DeviceFingerprintUtil
 from azer_common.config.base import JWTConfig
 

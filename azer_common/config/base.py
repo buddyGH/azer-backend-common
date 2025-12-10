@@ -9,7 +9,7 @@ from pydantic import Field, model_validator, field_validator
 from pydantic_settings.main import BaseSettings as PydanticBaseSettings, SettingsConfigDict
 
 
-EnvironmentType = Literal["development", "test", "production"]
+EnvironmentType = Literal["development", "tests", "production"]
 LimitType = Literal["ip", "id"]
 
 logging.basicConfig(
@@ -209,7 +209,7 @@ class ServerConfig(CustomBaseConfig):
     @field_validator("environment")
     @classmethod
     def validate_environment(cls, v: str) -> EnvironmentType:
-        allowed_envs: List[EnvironmentType] = ["development", "test", "production"]
+        allowed_envs: List[EnvironmentType] = ["development", "tests", "production"]
         if v not in allowed_envs:
             raise ValueError(f"运行环境仅支持 {allowed_envs}，当前值: {v}")
         return v
@@ -407,7 +407,7 @@ class JWTConfig(CustomBaseConfig):
     refresh_expire_days: int = Field(47, gt=0)
     private_key_path: Optional[str] = Field(None, min_length=1)
     public_key_path: Optional[str] = Field(None, min_length=1)
-    issuer: str = Field('api.example-test.com', min_length=3, max_length=100)
+    issuer: str = Field('api.example-tests.com', min_length=3, max_length=100)
     token_prefix: str = Field("Token ", min_length=1, max_length=20)
     redis_session_prefix: str = Field("jwt_session_897:", min_length=1, max_length=50)
 
