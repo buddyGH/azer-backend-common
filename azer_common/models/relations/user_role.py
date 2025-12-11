@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional, Union
 
 from tortoise.expressions import Q
@@ -32,10 +32,10 @@ class UserRole(BaseModel):
     # ========== 关键修正：多租户字段优化 ==========
     tenant = fields.ForeignKeyField(
         'models.Tenant',
-        related_name='user_roles',  # 修正：复数形式，避免反向查询冲突
+        related_name='user_roles',
         description='所属租户（外键，保证数据一致性）',
-        on_delete=fields.RESTRICT,  # 租户存在关联时禁止删除
-        null=True,  # null=全局角色（所有租户可用）
+        on_delete=fields.RESTRICT,
+        null=False,
         index=True
     )
 
@@ -56,12 +56,12 @@ class UserRole(BaseModel):
     class Meta:
         table = "azer_user_role"
         table_description = '用户角色关系表（核心关联表）'
-        unique_together = ("user", "role", "deleted_at")  # 同一用户-角色仅保留一条未删除记录
+        unique_together = ("user", "role", "tenant", "is_deleted")
         indexes = [
             # 基础查询索引
-            ("user_id", "is_assigned", "expires_at", "deleted_at"),
-            ("role_id", "is_assigned", "expires_at", "deleted_at"),
-            ("expires_at", "is_assigned", "deleted_at"),
+            ("user_id", "is_assigned", "expires_at", "is_deleted"),
+            ("role_id", "is_assigned", "expires_at", "is_deleted"),
+            ("expires_at", "is_assigned", "is_deleted"),
             ("tenant_id", "user_id", "is_assigned"),
             ("tenant_id", "role_id", "is_assigned"),
             ("tenant_id", "expires_at", "is_assigned"),

@@ -52,11 +52,11 @@ class RolePermission(BaseModel):
     class Meta:
         table = "azer_role_permission"
         table_description = '角色权限关联表'
-        unique_together = ("role", "permission", "deleted_at")
+        unique_together = ("role", "permission", "is_deleted")
         indexes = [
-            ("role", "is_granted", "deleted_at", "effective_to"),
-            ("permission", "is_granted", "deleted_at", "effective_to"),
-            ("is_granted", "effective_from", "effective_to", "deleted_at"),
+            ("role", "is_granted", "is_deleted", "effective_to"),
+            ("permission", "is_granted", "is_deleted", "effective_to"),
+            ("is_granted", "effective_from", "effective_to", "is_deleted"),
             ("tenant_id", "role", "is_granted"),
             ("tenant_id", "permission", "is_granted"),
         ]
