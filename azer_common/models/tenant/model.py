@@ -1,17 +1,11 @@
 import re
-from typing import Dict, List, Optional, Union
 from tortoise import fields
-from tortoise.transactions import in_transaction
 from azer_common.models.base import BaseModel
-from azer_common.models.relations.tenant_user import TenantUser
-from azer_common.models.relations.user_role import UserRole
-from azer_common.models.role.model import Role
-from azer_common.models.user.model import User
 from azer_common.utils.time import utc_now
 
 
 class Tenant(BaseModel):
-    """租户表 - 多租户体系的核心实体"""
+    """租户表"""
     # 核心标识
     code = fields.CharField(
         max_length=64,
@@ -56,7 +50,7 @@ class Tenant(BaseModel):
         description='租户配置（如权限策略）'
     )
 
-    # 关联字段 - 租户-用户多对多（以租户为主体）
+    # 关联字段
     users = fields.ManyToManyField(
         'models.User',
         related_name='tenants',
@@ -98,7 +92,7 @@ class Tenant(BaseModel):
                 "租户编码（code）格式错误：必须以小写字母开头，仅包含小写字母、数字、下划线、中划线，长度1-64"
             )
 
-        # 3. 过期时间合法性验证（如有值则校验）
+        # 3. 过期时间合法性验证
         if self.expired_at is not None and self.expired_at <= utc_now():
             raise ValueError(f"租户过期时间（expired_at）不能早于当前时间：{self.expired_at}")
 
@@ -118,174 +112,10 @@ class Tenant(BaseModel):
                 f"租户编码（code）已存在{delete_status}：{self.code}，ID：{existing_tenant.id}"
             )
 
-    # ========== 重写软删除方法（核心需求） ==========
     async def soft_delete(self):
-        """
-        重写软删除：先执行父类基础逻辑，再清理关联数据
-        """
-        # 系统内置租户禁止删除
         if self.is_system:
-            raise ValueError("系统内置租户不允许删除")
-
-        async with in_transaction() as conn:
-            # 1. 先调用父类的 soft_delete 方法（标记 is_deleted/deleted_at）
-            await super().soft_delete()
-
-            # 2. 撤销该租户下所有用户关联（置为未分配）
-            await TenantUser.objects.filter(
-                tenant_id=self.id,
-                is_assigned=True,
-                is_deleted=False
-            ).using_db(conn).update(
-                is_assigned=False,
-                updated_at=utc_now()
-            )
-
-            # 3. 禁用租户（额外标记）
-            self.is_enabled = False
-            await self.save(
-                update_fields=["is_enabled", "updated_at"],
-                using_db=conn
-            )
-
+            raise ValueError("系统内置角色不允许删除")
+        self.is_deleted = True
+        self.is_enabled = False
+        await self.save(update_fields=["is_deleted", "deleted_at", "is_enabled"])
         return self
-
-    # ========== 租户-用户关联便捷方法 ==========
-    async def assign_user(
-            self,
-            user: Union[int, User],
-            is_primary: bool = False,
-            expires_in_days: int = None,
-            metadata: Optional[Dict] = None
-    ) -> TenantUser:
-        """
-        给当前租户分配单个用户（以租户为主体）
-        """
-        return await TenantUser.grant_user(
-            tenant=self,
-            user=user,
-            is_primary=is_primary,
-            expires_in_days=expires_in_days,
-            metadata=metadata
-        )
-
-    async def assign_users(
-            self,
-            users: List[Union[int, User]],
-            is_primary: bool = False,
-            expires_in_days: int = None,
-            metadata: Optional[Dict] = None
-    ) -> Dict[str, any]:
-        """
-        给当前租户批量分配用户
-        """
-        return await TenantUser.bulk_grant_users(
-            tenant=self,
-            users=users,
-            is_primary=is_primary,
-            expires_in_days=expires_in_days,
-            metadata=metadata
-        )
-
-    async def revoke_user(self, user: Union[int, User]) -> bool:
-        """
-        撤销当前租户下的单个用户
-        """
-        return await TenantUser.revoke_user(tenant=self, user=user)
-
-    async def revoke_users(self, users: List[Union[int, User]]) -> int:
-        """
-        批量撤销当前租户下的用户
-        """
-        return await TenantUser.bulk_revoke_users(tenant=self, users=users)
-
-    async def get_users(
-            self,
-            include_expired: bool = False,
-            include_unassigned: bool = False
-    ) -> List[User]:
-        """
-        获取当前租户下的所有用户
-        """
-        tenant_users = await TenantUser.get_tenant_users(
-            tenant=self,
-            include_expired=include_expired,
-            include_unassigned=include_unassigned
-        )
-        return [tu.user for tu in tenant_users]
-
-    async def has_user(self, user: Union[int, User], check_valid: bool = True) -> bool:
-        """
-        检查当前租户是否包含指定用户
-        """
-        return await TenantUser.has_user(tenant=self, user=user, check_valid=check_valid)
-
-    async def set_user_primary_tenant(self, user: Union[int, User]) -> bool:
-        """
-        将当前租户设为指定用户的主租户
-        """
-        return await TenantUser.set_primary_tenant(user=user, tenant=self)
-
-    # ========== 租户-角色关联便捷方法 ==========
-    async def assign_role_to_user(
-            self,
-            user: Union[int, User],
-            role: Union[int, Role],
-            expires_in_days: int = None,
-            metadata: Optional[Dict] = None
-    ) -> UserRole:
-        """
-        给租户下的用户分配角色（需要先确保用户属于该租户）
-        """
-        # 1. 检查用户是否属于该租户
-        if not await self.has_user(user):
-            raise ValueError(f"用户[{user}]不属于租户[{self.code}]")
-
-        # 2. 检查角色是否属于该租户
-        role_obj = await Role.objects.get(id=role) if isinstance(role, int) else role
-        if role_obj.tenant_id != self.id:
-            raise ValueError(f"角色[{role_obj.code}]不属于租户[{self.code}]")
-
-        # 3. 分配角色
-        return await UserRole.grant_role(
-            user=user,
-            role=role,
-            expires_in_days=expires_in_days,
-            metadata=metadata
-        )
-
-    async def get_user_roles(
-            self,
-            user: Union[int, User],
-            include_expired: bool = False,
-            include_revoked: bool = False
-    ) -> List[Role]:
-        """
-        获取用户在当前租户下的角色
-        """
-        if not await self.has_user(user):
-            raise ValueError(f"用户[{user}]不属于租户[{self.code}]")
-
-        user_roles = await UserRole.get_user_roles(
-            user=user,
-            include_expired=include_expired,
-            include_revoked=include_revoked,
-            tenant_id=self.id  # 按租户过滤
-        )
-        return [ur.role for ur in user_roles]
-
-    async def revoke_user_role(
-            self,
-            user: Union[int, User],
-            role: Union[int, Role]
-    ) -> bool:
-        """
-        撤销用户在当前租户下的角色
-        """
-        if not await self.has_user(user):
-            raise ValueError(f"用户[{user}]不属于租户[{self.code}]")
-
-        return await UserRole.revoke_role(
-            user=user,
-            role=role
-        )
