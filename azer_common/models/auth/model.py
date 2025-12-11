@@ -5,9 +5,8 @@ from tortoise import fields
 from tortoise.transactions import in_transaction
 from azer_common.models.base import BaseModel
 from azer_common.models.enums.base import MFATypeEnum
-from azer_common.utils.time import utc_now
+from azer_common.utils.time import add_days, utc_now
 from azer_common.utils.validators import validate_password
-from datetime import timedelta
 from typing import Optional
 
 PH_SINGLETON = PasswordHasher()
@@ -149,7 +148,7 @@ class UserCredential(BaseModel):
 
         # 设置密码过期时间
         if password_expire_days is not None:
-            self.password_expires_at = utc_now() + timedelta(days=password_expire_days)
+            self.password_expires_at = add_days(days=password_expire_days)
         else:
             self.password_expires_at = None
 

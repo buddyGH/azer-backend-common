@@ -44,13 +44,17 @@ class BaseModel(models.Model):
         return f"<{self.__class__.__name__}: {self.id}>"
 
     async def soft_delete(self):
-        """软删除方法"""
+        """
+        软删除当前实例：标记is_deleted=True，记录deleted_at时间
+        """
         self.is_deleted = True
         self.deleted_at = utc_now()
         await self.save(update_fields=["is_deleted", "deleted_at"])
 
     async def restore(self):
-        """恢复软删除数据"""
+        """
+        恢复软删除实例：标记is_deleted=False，清空deleted_at时间
+        """
         self.is_deleted = False
         self.deleted_at = None
         await self.save(update_fields=["is_deleted", "deleted_at"])

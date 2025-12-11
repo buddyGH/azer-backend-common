@@ -14,16 +14,16 @@ class UserStatusEnum(str, Enum):
     """
     # 正常状态
     UNVERIFIED = "unverified"  # 未验证
-    PENDING = "pending"        # 审核中
-    ACTIVE = "active"          # 正常使用
+    PENDING = "pending"  # 审核中
+    ACTIVE = "active"  # 正常使用
 
     # 异常状态（移除 LOCKED）
-    FROZEN = "frozen"          # 冻结（暂时无法使用，该状态需要人工转换）
+    FROZEN = "frozen"  # 冻结（暂时无法使用，该状态需要人工转换）
 
     # 结束状态
-    INACTIVE = "inactive"      # 不活跃（长时间未登录）
-    BANNED = "banned"          # 永久封禁
-    CLOSED = "closed"          # 已注销
+    INACTIVE = "inactive"  # 不活跃（长时间未登录）
+    BANNED = "banned"  # 永久封禁
+    CLOSED = "closed"  # 已注销
 
 
 class MFATypeEnum(str, Enum):
@@ -34,12 +34,19 @@ class MFATypeEnum(str, Enum):
     EMAIL = "email"  # 邮箱验证码
 
 
-class RoleEnum(str, Enum):
-    GUEST = "guest"  # 游客
-    USER = "user"  # 用户
-    MEMBER = "vip"  # 会员
-    SUPER_MEMBER = "svip"  # 超级会员
-    ADMIN = "admin"  # 管理员
-    SUPER_ADMIN = "super_admin"  # 系统管理员
-    DEVELOPER = "developer"  # 开发者
-    SYSTEM = "system"  # 系统
+class RolePermissionOperationType(str, Enum):
+    """权限关联操作类型枚举"""
+    GRANT = "GRANT"  # 授予权限
+    REVOKE = "REVOKE"  # 撤销权限
+    ACTIVATE = "ACTIVATE"  # 激活权限
+    UPDATE_EFFECTIVE = "UPDATE_EFFECTIVE"  # 更新生效时间
+    CLEANUP_EXPIRED = "CLEANUP_EXPIRED"  # 自动清理过期权限
+
+
+class UserRoleOperationType(str, Enum):
+    """用户角色操作类型枚举"""
+    GRANT = "GRANT"  # 授予角色
+    REVOKE = "REVOKE"  # 撤销角色
+    RENEW = "RENEW"  # 续期角色
+    ACTIVATE = "ACTIVATE"  # 重新激活角色
+    CLEANUP_EXPIRED = "CLEANUP_EXPIRED"  # 自动清理过期角色

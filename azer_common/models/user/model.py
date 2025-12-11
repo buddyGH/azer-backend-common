@@ -1,10 +1,11 @@
 # azer_common/models/user/model.py
-from typing import Optional
+from typing import Dict, List, Optional, Union
 from tortoise import fields
 from tortoise.expressions import Q
 from azer_common.models.base import BaseModel
 from azer_common.models.enums.base import SexEnum, UserStatusEnum
 from azer_common.models.relations.user_role import UserRole
+from azer_common.models.role.model import Role
 from azer_common.utils.time import utc_now, today
 from azer_common.utils.validators import (
     validate_url, validate_username, validate_email,
@@ -108,6 +109,13 @@ class User(BaseModel):
         description='用户角色'
     )
 
+    tenants = fields.ManyToManyField(
+        'models.Tenant',
+        related_name='users',
+        through='azer_tenant_user',
+        description='用户属于多个租户'
+    )
+
     class Meta:
         table = "azer_user"
         table_description = '用户表'
@@ -151,27 +159,115 @@ class User(BaseModel):
             self.preferences = {}
         self.preferences[key] = value
 
-    # 角色便捷方法
-    async def get_active_roles(self):
-        """获取用户当前有效的角色"""
-        return await UserRole.objects.filter(
+    # ========== 便捷方法（封装 UserRole 操作） ==========
+    async def assign_role(
+            self,
+            role: Union[int, Role],
+            expires_in_days: int = None,
+            metadata: Optional[Dict] = None
+    ) -> UserRole:
+        """
+        给当前用户分配单个角色
+        :return: 创建的 UserRole 实例
+        """
+        return await UserRole.grant_role(
             user=self,
-            is_active=True,
-            revoked_at__isnull=True
-        ).filter(
-            Q(expires_at__isnull=True) |
-            Q(expires_at__gt=utc_now())
-        ).prefetch_related('role')
+            role=role,
+            expires_in_days=expires_in_days,
+            metadata=metadata
+        )
 
-    async def has_role(self, role_code: str) -> bool:
-        """检查用户是否拥有某个角色"""
-        active_roles = await self.get_active_roles()
-        return any(role.role.code == role_code for role in active_roles)
+    async def assign_roles(
+            self,
+            roles: List[Union[int, Role]],
+            expires_in_days: int = None,
+            metadata: Optional[Dict] = None
+    ) -> Dict[str, any]:
+        """
+        给当前用户批量分配角色
+        :return: 批量创建结果（created/existing 等）
+        """
+        return await UserRole.bulk_grant_roles(
+            user=self,
+            roles=roles,
+            expires_in_days=expires_in_days,
+            metadata=metadata
+        )
 
-    async def get_role_levels(self) -> list[int]:
-        """获取用户所有角色的等级"""
-        active_roles = await self.get_active_roles()
-        return [role.role.level for role in active_roles]
+    async def revoke_role(self, role: Union[int, Role]) -> bool:
+        """
+        撤销当前用户的单个角色
+        :return: 是否成功撤销
+        """
+        return await UserRole.revoke_role(user=self, role=role)
+
+    async def revoke_roles(self, roles: List[Union[int, Role]]) -> int:
+        """
+        批量撤销当前用户的指定角色
+        :return: 成功撤销的数量
+        """
+        return await UserRole.bulk_revoke_roles(user=self, roles=roles)
+
+    async def revoke_all_roles(self) -> int:
+        """
+        撤销当前用户的所有有效角色
+        :return: 成功撤销的数量
+        """
+        return await UserRole.bulk_revoke_roles(user=self)
+
+    async def get_roles(
+            self,
+            include_expired: bool = False,
+            include_revoked: bool = False
+    ) -> List[Role]:
+        """
+        获取当前用户的角色列表（返回 Role 实例，而非 UserRole）
+        :return: 角色实例列表
+        """
+        user_roles = await UserRole.get_user_roles(
+            user=self,
+            include_expired=include_expired,
+            include_revoked=include_revoked
+        )
+        # 提取 Role 实例
+        return [ur.role for ur in user_roles]
+
+    async def get_valid_roles(self) -> List[Role]:
+        """
+        快捷获取当前用户的有效角色（未过期+未撤销）
+        """
+        return await self.get_roles(include_expired=False, include_revoked=False)
+
+    async def has_role(
+            self,
+            role: Union[int, Role, str],
+            check_valid: bool = True
+    ) -> bool:
+        """
+        检查当前用户是否拥有指定角色（支持ID/实例/编码）
+        :param role: 角色ID/实例/编码
+        :param check_valid: 是否仅检查有效角色（未过期+未撤销）
+        """
+        return await UserRole.has_role(
+            user=self,
+            role=role,
+            check_valid=check_valid
+        )
+
+    async def refresh_role_expiry(
+            self,
+            role: Union[int, Role],
+            expires_in_days: int
+    ) -> bool:
+        """
+        刷新指定角色的过期时间
+        :return: 是否成功更新
+        """
+        return await UserRole.refresh_expires_at(
+            user=self,
+            role=role,
+            expires_in_days=expires_in_days
+        )
 
 
 import azer_common.models.user.signals

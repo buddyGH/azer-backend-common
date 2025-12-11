@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, date
+from datetime import datetime, timedelta, timezone, date
 
 
 def utc_now():
@@ -7,3 +7,7 @@ def utc_now():
 
 def today():
     return date.today()
+
+
+def add_days(days):
+    return utc_now() + timedelta(days=days)
