@@ -1,213 +1,241 @@
-# azer_common/repositories/auth/repository.py
-# azer_common/repositories/auth/user_credential_repository.py
-from typing import Optional, List, Dict, Any, Tuple
-from tortoise.expressions import Q
+from typing import Optional, List, Dict, Any
+import argon2
 from tortoise.transactions import in_transaction
-from argon2.exceptions import VerifyMismatchError, VerificationError
-
-from azer_common.models.auth.model import UserCredential, MFATypeEnum
+from azer_common.models.auth.model import UserCredential
+from azer_common.models.enums.base import MFATypeEnum
 from azer_common.repositories.base import BaseRepository
 from azer_common.utils.time import utc_now
 from azer_common.utils.validators import validate_password
-from azer_common.models.auth.model import PH_SINGLETON
+from argon2 import PasswordHasher
+
+# 复用密码哈希单例
+PH_SINGLETON = PasswordHasher()
 
 
 class UserCredentialRepository(BaseRepository[UserCredential]):
-    """用户认证数据仓库"""
+    """用户认证信息仓储层，处理数据库操作与业务逻辑解耦"""
 
     def __init__(self):
         super().__init__(UserCredential)
 
     async def get_by_user_id(self, user_id: int) -> Optional[UserCredential]:
-        """根据用户ID获取认证信息"""
+        """根据用户ID获取认证信息（自动过滤软删除）"""
         return await self.get_query().filter(user_id=user_id).first()
 
-    async def get_by_oauth(self, platform: str, uid: str) -> Optional[UserCredential]:
-        """根据第三方平台信息获取认证信息"""
+    async def get_with_user(self, user_id: int) -> Optional[UserCredential]:
+        """获取用户认证信息并关联用户数据（减少查询次数）"""
+        return await self.get_query().filter(user_id=user_id).select_related('user').first()
+
+    async def get_by_oauth_info(self, platform: str, oauth_uid: str) -> Optional[UserCredential]:
+        """根据第三方登录信息获取认证记录"""
         return await self.get_query().filter(
             oauth_platform=platform,
-            oauth_uid=uid
+            oauth_uid=oauth_uid
         ).first()
 
-    async def verify_password(
-            self,
-            credential_id: int,
-            password: str
-    ) -> Tuple[bool, Optional[UserCredential]]:
-        """验证密码（带事务和行锁保护）
-
-        Returns:
-            Tuple[bool, Optional[UserCredential]]: (是否验证成功, 更新后的实例)
-        """
+    async def verify_password(self, user_id: int, password: str) -> bool:
+        """验证密码（带并发安全保护，更新失败次数）"""
         async with in_transaction():
-            # 获取并锁定记录
-            fresh_instance = await UserCredential.objects.select_for_update().get_or_none(id=credential_id)
-            if not fresh_instance or not fresh_instance.password:
-                return False, None
+            # 加行锁获取最新数据，避免脏读
+            credential = await self.get_query().filter(user_id=user_id).select_for_update().first()
+            if not credential or not credential.password:
+                return False
 
             try:
-                is_valid = PH_SINGLETON.verify(fresh_instance.password, password)
-            except (VerifyMismatchError, VerificationError):
+                is_valid = PH_SINGLETON.verify(credential.password, password)
+            except (argon2.exceptions.VerifyMismatchError,
+                    argon2.exceptions.VerificationError):
                 is_valid = False
 
+            # 更新失败次数/登录时间
             if is_valid:
-                fresh_instance.failed_login_attempts = 0
-                fresh_instance.last_login_at = utc_now()
+                credential.failed_login_attempts = 0
+                credential.last_login_at = utc_now()
             else:
-                fresh_instance.failed_login_attempts += 1
+                credential.failed_login_attempts += 1
 
-            await fresh_instance.save()
-            return is_valid, fresh_instance
+            await credential.save()
+            return is_valid
 
     async def change_password(
             self,
-            credential_id: int,
+            user_id: int,
             old_password: str,
             new_password: str,
             password_expire_days: Optional[int] = None
     ) -> bool:
-        """安全地更改密码"""
+        """安全修改密码（验证旧密码+事务保护）"""
         async with in_transaction():
-            # 获取并锁定记录
-            fresh_instance = await UserCredential.objects.select_for_update().get_or_none(id=credential_id)
-            if not fresh_instance:
+            credential = await self.get_query().filter(user_id=user_id).select_for_update().first()
+            if not credential:
                 return False
 
             # 验证旧密码
-            try:
-                if not fresh_instance.password or not PH_SINGLETON.verify(fresh_instance.password, old_password):
-                    return False
-            except (VerifyMismatchError, VerificationError):
+            if not credential.check_password_match(old_password):
                 return False
 
-            # 新密码不能与旧密码相同
-            try:
-                if PH_SINGLETON.verify(fresh_instance.password, new_password):
-                    return False
-            except (VerifyMismatchError, VerificationError):
-                # 密码不匹配是正常的，继续执行
-                pass
+            # 检查新旧密码是否相同
+            if credential.check_password_match(new_password):
+                return False
 
-            # 验证新密码复杂度
+            # 验证新密码格式并设置
             try:
                 validate_password(new_password)
             except ValueError:
                 return False
 
-            # 设置新密码
-            fresh_instance.password = PH_SINGLETON.hash(new_password)
-            fresh_instance.password_changed_at = utc_now()
-            fresh_instance.failed_login_attempts = 0
-
-            # 设置密码过期时间
-            if password_expire_days is not None:
-                from azer_common.utils.time import add_days
-                fresh_instance.password_expires_at = add_days(days=password_expire_days)
-            else:
-                fresh_instance.password_expires_at = None
-
-            await fresh_instance.save()
+            credential.set_password(new_password, password_expire_days)
+            await credential.save()
             return True
+
+    async def set_password(
+            self,
+            user_id: int,
+            password: str,
+            password_expire_days: Optional[int] = None
+    ) -> bool:
+        """直接设置密码（无需验证旧密码，用于重置场景）"""
+        credential = await self.get_by_user_id(user_id)
+        if not credential:
+            return False
+
+        try:
+            validate_password(password)
+        except ValueError:
+            return False
+
+        credential.set_password(password, password_expire_days)
+        await credential.save()
+        return True
 
     async def enable_mfa(
             self,
-            credential_id: int,
+            user_id: int,
             mfa_type: MFATypeEnum,
             secret: str,
-            backup_codes: List[str]
+            backup_codes: list
     ) -> bool:
-        """启用MFA"""
-        update_data = {
-            "mfa_enabled": True,
-            "mfa_type": mfa_type,
-            "mfa_secret": secret,
-            "backup_codes": backup_codes,
-            "mfa_verified_at": utc_now()
-        }
-        return await self.update(credential_id, **update_data) is not None
-
-    async def disable_mfa(self, credential_id: int) -> bool:
-        """禁用MFA"""
-        update_data = {
-            "mfa_enabled": False,
-            "mfa_type": MFATypeEnum.NONE,
-            "mfa_secret": None,
-            "backup_codes": None,
-            "mfa_verified_at": None
-        }
-        return await self.update(credential_id, **update_data) is not None
-
-    async def update_email_verified(self, credential_id: int, verified: bool = True) -> bool:
-        """更新邮箱验证状态"""
-        update_data = {
-            "email_verified_at": utc_now() if verified else None
-        }
-        return await self.update(credential_id, **update_data) is not None
-
-    async def update_mobile_verified(self, credential_id: int, verified: bool = True) -> bool:
-        """更新手机验证状态"""
-        update_data = {
-            "mobile_verified_at": utc_now() if verified else None
-        }
-        return await self.update(credential_id, **update_data) is not None
-
-    async def record_login(
-            self,
-            credential_id: int,
-            ip_address: Optional[str] = None
-    ) -> bool:
-        """记录登录信息"""
-        # 先获取当前登录次数
-        instance = await self.get_by_id(credential_id)
-        if not instance:
+        """启用MFA认证"""
+        credential = await self.get_by_user_id(user_id)
+        if not credential:
             return False
 
-        update_data = {
-            "login_count": instance.login_count + 1,
-            "last_login_at": utc_now(),
-            "last_login_ip": ip_address
-        }
-        return await self.update(credential_id, **update_data) is not None
+        credential.mfa_enabled = True
+        credential.mfa_type = mfa_type
+        credential.mfa_secret = secret
+        credential.backup_codes = backup_codes
+        credential.mfa_verified_at = utc_now()
+        await credential.save()
+        return True
 
-    async def reset_failed_attempts(self, credential_id: int) -> bool:
+    async def disable_mfa(self, user_id: int) -> bool:
+        """禁用MFA认证"""
+        credential = await self.get_by_user_id(user_id)
+        if not credential:
+            return False
+
+        credential.mfa_enabled = False
+        credential.mfa_type = MFATypeEnum.NONE
+        credential.mfa_secret = None
+        credential.backup_codes = None
+        credential.mfa_verified_at = None
+        await credential.save()
+        return True
+
+    async def set_email_verified(self, user_id: int, verified: bool = True) -> bool:
+        """设置邮箱验证状态"""
+        credential = await self.get_by_user_id(user_id)
+        if not credential:
+            return False
+
+        credential.email_verified_at = utc_now() if verified else None
+        await credential.save(update_fields=['email_verified_at'])
+        return True
+
+    async def set_mobile_verified(self, user_id: int, verified: bool = True) -> bool:
+        """设置手机验证状态"""
+        credential = await self.get_by_user_id(user_id)
+        if not credential:
+            return False
+
+        credential.mobile_verified_at = utc_now() if verified else None
+        await credential.save(update_fields=['mobile_verified_at'])
+        return True
+
+    async def record_login(self, user_id: int, ip_address: Optional[str] = None) -> bool:
+        """记录用户登录信息（次数、时间、IP）"""
+        credential = await self.get_by_user_id(user_id)
+        if not credential:
+            return False
+
+        credential.login_count += 1
+        credential.last_login_at = utc_now()
+        credential.last_login_ip = ip_address
+        await credential.save(update_fields=['login_count', 'last_login_at', 'last_login_ip'])
+        return True
+
+    async def reset_failed_attempts(self, user_id: int) -> bool:
         """重置登录失败次数"""
-        return await self.update(credential_id, failed_login_attempts=0) is not None
+        credential = await self.get_by_user_id(user_id)
+        if not credential:
+            return False
 
-    async def search_by_login_history(
+        credential.failed_login_attempts = 0
+        await credential.save(update_fields=['failed_login_attempts'])
+        return True
+
+    async def update_login_duration(self, user_id: int, duration_seconds: int) -> bool:
+        """更新用户在线时长"""
+        credential = await self.get_by_user_id(user_id)
+        if not credential:
+            return False
+
+        credential.total_online_duration += duration_seconds
+        await credential.save(update_fields=['total_online_duration'])
+        return True
+
+    async def get_security_summary(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """获取用户安全信息摘要（用于审计/日志）"""
+        credential = await self.get_by_user_id(user_id)
+        if not credential:
+            return None
+        return credential.get_security_info()
+
+    async def batch_get_security_summary(self, user_ids: List[int]) -> Dict[int, Dict[str, Any]]:
+        """批量获取用户安全信息摘要"""
+        credentials = await self.get_by_ids(user_ids)
+        return {
+            cred.user_id: cred.get_security_info()
+            for cred in credentials
+        }
+
+    async def check_password_expired(self, user_id: int) -> bool:
+        """检查用户密码是否过期"""
+        credential = await self.get_by_user_id(user_id)
+        if not credential:
+            return False
+        return credential.is_password_expired()
+
+    async def create_with_user(
             self,
-            last_login_days: Optional[int] = None,
-            min_login_count: Optional[int] = None,
-            offset: int = 0,
-            limit: int = 20
-    ) -> Tuple[List[UserCredential], int]:
-        """根据登录历史搜索用户"""
-        query = self.get_query()
+            user_id: int,
+            password: Optional[str] = None,
+            registration_ip: Optional[str] = None,
+            registration_source: Optional[str] = None,
+            **kwargs
+    ) -> UserCredential:
+        """创建用户认证信息（关联用户ID）"""
+        data = {
+            'user_id': user_id,
+            'registration_ip': registration_ip,
+            'registration_source': registration_source,
+            **kwargs
+        }
 
-        if last_login_days:
-            from azer_common.utils.time import add_days
-            cutoff_date = add_days(days=-last_login_days)
-            query = query.filter(last_login_at__gte=cutoff_date)
+        # 若传入密码则自动哈希
+        if password:
+            validate_password(password)
+            data['password'] = PH_SINGLETON.hash(password)
+            data['password_changed_at'] = utc_now()
 
-        if min_login_count:
-            query = query.filter(login_count__gte=min_login_count)
-
-        total = await query.count()
-        results = await query.offset(offset).limit(limit).all()
-        return list(results), total
-
-    async def get_security_stats(self, user_ids: List[int]) -> Dict[int, Dict[str, Any]]:
-        """批量获取用户安全统计信息"""
-        credentials = await self.get_query().filter(user_id__in=user_ids).all()
-
-        stats = {}
-        for cred in credentials:
-            stats[cred.user_id] = {
-                'mfa_enabled': cred.mfa_enabled,
-                'mfa_type': cred.mfa_type.value if cred.mfa_type else None,
-                'last_login_at': cred.last_login_at,
-                'failed_attempts': cred.failed_login_attempts,
-                'is_verified': bool(cred.email_verified_at or cred.mobile_verified_at),
-                'password_expired': cred.is_password_expired(),
-            }
-
-        return stats
+        return await self.create(**data)

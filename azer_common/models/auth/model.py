@@ -1,14 +1,11 @@
 # azer_common/models/auth/model.py
 import argon2
-from argon2 import PasswordHasher
 from tortoise import fields
 from azer_common.models.base import BaseModel
 from azer_common.models.enums.base import MFATypeEnum
 from azer_common.utils.time import add_days, utc_now
 from azer_common.utils.validators import validate_password
 from typing import Optional
-
-PH_SINGLETON = PasswordHasher()
 
 
 class UserCredential(BaseModel):
