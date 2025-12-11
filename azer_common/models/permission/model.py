@@ -1,17 +1,16 @@
 import re
-from typing import List, Optional, Union
-from azer_common.models.base import BaseModel
 from tortoise import fields
-from tortoise.expressions import Q
+from azer_common.models.base import BaseModel
 from azer_common.utils.validators import validate_permission_code
 
 
 class Permission(BaseModel):
-    # 权限标识
+    """权限定义表，存储细粒度权限规则"""
+    # 核心标识字段
     code = fields.CharField(
         max_length=100,
         validators=[validate_permission_code],
-        description='权限代码（租户内唯一标识），如：user:read, article:delete'
+        description='权限编码（租户内唯一，如：user:read、article:delete）'
     )
     name = fields.CharField(
         max_length=50,
@@ -23,41 +22,41 @@ class Permission(BaseModel):
         description='权限详细描述'
     )
 
+    # 关联字段
     roles = fields.ManyToManyField(
         'models.Role',
         through='azer_role_permission',
         related_name='permissions',
-        description='拥有该权限的角色',
+        description='拥有该权限的角色列表'
     )
-
     tenant = fields.ForeignKeyField(
         'models.Tenant',
         related_name='permissions_list',
-        null=True,  # null=全局权限，所有租户可用
+        null=True,
         on_delete=fields.RESTRICT,
-        description='所属租户（null表示全局权限）'
+        description='所属租户（null表示全局权限，所有租户可用）'
     )
 
-    # 权限分类
+    # 权限分类字段
     category = fields.CharField(
         max_length=50,
         default='general',
-        description='权限分类，如：system, user, content, finance'
+        description='权限分类（如：system、user、content、finance）'
     )
     module = fields.CharField(
         max_length=50,
         null=True,
-        description='所属模块'
+        description='所属业务模块'
     )
 
-    # 权限元数据
+    # 权限规则字段
     action = fields.CharField(
         max_length=20,
-        description='操作类型：read, write, delete, manage'
+        description='操作类型（read/write/delete/manage）'
     )
     resource_type = fields.CharField(
         max_length=50,
-        description='资源类型'
+        description='资源类型（如：user、article、order）'
     )
     resource_id = fields.CharField(
         max_length=100,
@@ -65,19 +64,20 @@ class Permission(BaseModel):
         description='特定资源ID（为空表示所有资源）'
     )
 
-    # 状态控制
+    # 状态控制字段
     is_enabled = fields.BooleanField(
         default=True,
         description='是否启用'
     )
     is_system = fields.BooleanField(
         default=False,
-        description='是否系统内置权限'
+        description='是否系统内置权限（不可删除，必须为全局权限）'
     )
 
+    # 扩展字段
     metadata = fields.JSONField(
         null=True,
-        description='扩展元数据'
+        description='权限扩展元数据'
     )
 
     class Meta:
@@ -86,15 +86,20 @@ class Permission(BaseModel):
         indexes = [
             ("category", "module"),
             ("resource_type", "action"),
-            ("code", "is_enabled", "tenant_id"),  # 优化：核心查询索引
-            ("tenant_id", "category", "is_enabled"),  # 新增：按租户+分类查询
+            ("code", "is_enabled", "tenant_id"),
+            ("tenant_id", "category", "is_enabled"),
         ]
-        unique_together = ("code", "tenant_id", "is_deleted")  # 租户+编码+未删除 唯一
+        unique_together = ("code", "tenant_id", "is_deleted")
+
+    class PydanticMeta:
+        include = {
+            "roles": {"id", "code", "name"},
+            "tenant": {"id", "code", "name"},
+        }
 
     def __str__(self):
-        """优化：处理tenant未加载的边界情况，统一租户ID类型"""
+        """权限实例的字符串表示，兼容租户未加载场景"""
         try:
-            # 优先用tenant_id（无需加载关联），兼容tenant未加载场景
             tenant_id = self.tenant_id
             tenant_info = "[全局]" if tenant_id is None else f"[租户:{tenant_id}]"
         except Exception:
@@ -102,47 +107,51 @@ class Permission(BaseModel):
         return f"{tenant_info} {self.code}: {self.name}"
 
     async def save(self, *args, **kwargs):
-        """保存前验证"""
+        """保存权限前执行数据验证，验证通过后调用父类保存方法"""
         await self.validate()
         await super().save(*args, **kwargs)
 
     async def validate(self):
-        """验证权限数据（强化逻辑+类型校验）"""
-        # 1. 系统权限必须是全局权限（tenant_id为null）
+        """验证权限数据合法性"""
+        # 系统权限校验
         if self.is_system and self.tenant_id is not None:
             raise ValueError("系统内置权限必须为全局权限（tenant_id需为空）")
 
-        # 2. 代码格式验证（强化正则）
+        # 编码格式校验
         if not re.match(r'^[a-z_][a-z0-9_:]{0,99}$', self.code):
             raise ValueError(
-                "权限代码必须为小写字母、数字、下划线和冒号，"
-                "以字母或下划线开头，长度不超过100个字符"
+                "权限编码格式错误：必须以小写字母/下划线开头，仅包含小写字母、数字、下划线、冒号，长度1-100"
             )
 
-        # 3. 唯一性验证（排除软删除的，区分全局/租户）
-        query = self.__class__.objects.filter(
-            code=self.code,
-            is_deleted=False  # 补充：排除软删除的记录
-        )
-        # 区分全局/租户：tenant_id 相同 或 都为 null
+        # 唯一性校验
+        query = self.__class__.objects.filter(code=self.code, is_deleted=False)
         if self.tenant_id is None:
             query = query.filter(tenant_id__isnull=True)
         else:
             query = query.filter(tenant_id=self.tenant_id)
-
-        # 排除自身（更新场景）
         if self.id:
             query = query.exclude(id=self.id)
 
         existing = await query.first()
         if existing:
             tenant_desc = "全局" if existing.tenant_id is None else f"租户 {existing.tenant_id}"
-            raise ValueError(f"{tenant_desc}下已存在相同权限代码: {self.code}")
+            raise ValueError(f"{tenant_desc}下已存在相同权限编码: {self.code}")
 
     async def soft_delete(self):
+        """软删除权限，系统权限禁止删除"""
         if self.is_system:
-            raise ValueError("系统内置角色不允许删除")
+            raise ValueError("系统内置权限不允许删除")
         self.is_deleted = True
         self.is_enabled = False
         await self.save(update_fields=["is_deleted", "deleted_at", "is_enabled"])
         return self
+
+    async def enable(self):
+        """启用权限"""
+        self.is_enabled = True
+        await self.save(update_fields=["is_enabled", "updated_at"])
+
+    async def disable(self):
+        """禁用权限"""
+        self.is_enabled = False
+        await self.save(update_fields=["is_enabled", "updated_at"])
