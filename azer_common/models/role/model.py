@@ -43,8 +43,10 @@ class Role(BaseModel):
         related_name='roles',
         on_delete=fields.RESTRICT,
         description='所属租户（强关联，非空）',
-        index=True
+        index=True,
+        null=False
     )
+
     # 多对多关系
     permissions = fields.ManyToManyField(
         'models.Permission',
@@ -167,8 +169,8 @@ class Role(BaseModel):
         return self
 
     async def validate(self):
-        """验证角色数据（强化租户+逻辑校验）"""
-        # 1. 租户存在性&有效性校验（核心修正：确保 tenant_id 存在且租户有效）
+        """验证角色数据（强化租户+逻辑校验，移除 code 唯一性）"""
+        # 1. 租户存在性&有效性校验（核心：tenant 非空）
         if not hasattr(self, 'tenant_id') or self.tenant_id is None:
             raise ValueError("角色必须归属具体租户（tenant_id 不能为空）")
 
@@ -181,30 +183,19 @@ class Role(BaseModel):
         if not tenant:
             raise ValueError(f"租户不存在或已被禁用/删除（tenant_id: {self.tenant_id}）")
 
-        # 2. 角色代码格式校验
+        # 2. 角色代码格式校验（仅格式，不校验唯一）
         if not re.match(r'^[A-Z_][A-Z0-9_]{0,49}$', self.code):
             raise ValueError(
                 "角色代码必须为大写字母、数字和下划线，"
                 "以字母或下划线开头，长度不超过50"
             )
 
-        # 3. 租户内 code 唯一性校验（兼容软删除）
-        query = self.__class__.objects.filter(
-            code=self.code,
-            tenant_id=self.tenant_id,  # 使用自动生成的 tenant_id 字段
-            is_deleted=False
-        )
-        if self.id:
-            query = query.exclude(id=self.id)
-        if await query.exists():
-            raise ValueError(f"租户 [{tenant.code}] 下已存在角色代码：{self.code}")
-
-        # 4. 父角色校验（自引用/循环/租户一致性）
-        if self.parent_id:  # 修正：使用 parent_id 而非 parent（避免未加载关联）
+        # 3. 父角色校验（自引用/循环/租户一致性）
+        if self.parent_id:
             # 先加载父角色完整数据（包含租户关联）
             parent_role = await self.__class__.objects.filter(
                 id=self.parent_id,
-                tenant_id=self.tenant_id,
+                tenant_id=self.tenant_id,  # 父角色必须同租户
                 is_deleted=False
             ).prefetch_related('tenant').first()
 
@@ -244,14 +235,14 @@ class Role(BaseModel):
             if depth >= max_depth:
                 raise ValueError("角色继承层级过深（超过20层），可能存在循环或不合理设计")
 
-        # 5. 系统角色校验
+        # 4. 系统角色校验（tenant 非空，仍禁止父角色/默认角色）
         if self.is_system:
             if self.parent_id:
                 raise ValueError("系统内置角色不允许设置父角色")
             if self.is_default:
                 raise ValueError("系统内置角色不能同时为默认角色")
 
-        # 6. 默认角色唯一性（按租户）
+        # 5. 默认角色唯一性（按租户）
         if self.is_default:
             default_query = self.__class__.objects.filter(
                 is_default=True,
@@ -264,7 +255,7 @@ class Role(BaseModel):
             if await default_query.exists():
                 raise ValueError(f"租户 [{tenant.code}] 下已存在默认角色，同一租户仅允许一个默认角色")
 
-        # 7. 层级非负校验
+        # 6. 层级非负校验
         if self.level < 0:
             raise ValueError("角色等级不能为负数（level >= 0）")
 

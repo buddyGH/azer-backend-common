@@ -13,7 +13,7 @@ class Permission(BaseModel):
     code = fields.CharField(
         max_length=100,
         validators=[validate_permission_code],
-        description='权限代码（唯一标识），如：user:read, article:delete'
+        description='权限代码（租户内唯一标识），如：user:read, article:delete'
     )
     name = fields.CharField(
         max_length=50,
