@@ -46,7 +46,6 @@ class Role(BaseModel):
         index=True,
         null=False
     )
-
     # 多对多关系
     permissions = fields.ManyToManyField(
         'models.Permission',
@@ -84,7 +83,6 @@ class Role(BaseModel):
         on_delete=fields.SET_NULL,
         description='父角色（用于角色继承）'
     )
-
     # 扩展字段
     metadata = fields.JSONField(
         null=True,
@@ -97,13 +95,12 @@ class Role(BaseModel):
         ordering = ["level", "code"]
         indexes = [
             ("tenant_id", "parent_id"),
-            ("tenant_id", "code", "deleted_at"),
             ("tenant_id", "is_default"),
             ("tenant_id", "is_enabled", "deleted_at"),
             ("level", "tenant_id"),
         ]
         unique_together = [
-            ("tenant_id", "code", "deleted_at"),  # tenant_id 是 ForeignKey 自动生成的字段
+            ("tenant_id", "code", "deleted_at"),
         ]
 
     def __str__(self):
@@ -155,7 +152,7 @@ class Role(BaseModel):
                 parent_id=self.id,
                 is_deleted=False
             ).using_db(conn).update(
-                parent_id=None,  # 修正：使用 parent_id 而非 parent
+                parent_id=None,
                 updated_at=utc_now()
             )
 
@@ -498,7 +495,7 @@ class Role(BaseModel):
         """
         query = UserRole.objects.filter(
             role_id=self.id,
-            tenant_id=self.tenant_id  # 使用自动生成的 tenant_id 字段
+            tenant_id=self.tenant_id
         ).prefetch_related('user')
 
         # 过滤有效关联
@@ -594,7 +591,7 @@ class Role(BaseModel):
             'is_enabled': self.is_enabled,
             'level': self.level,
             'parent_id': self.parent_id,
-            'tenant_id': self.tenant_id,  # 明确返回自动生成的 tenant_id
+            'tenant_id': self.tenant_id,
             'tenant_code': self.tenant.code,
             'metadata': self.metadata,
             'created_at': self.created_at,
