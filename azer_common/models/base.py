@@ -1,5 +1,6 @@
 # azer_common/models/base.py
 import uuid
+from uuid_extensions import uuid7
 from tortoise import fields, models
 from tortoise.manager import Manager
 
@@ -18,7 +19,7 @@ class BaseModel(models.Model):
     """基础模型，包含通用字段"""
 
     # 主键
-    id = fields.UUIDField(pk=True, default=uuid.uuid4)
+    id = fields.UUIDField(pk=True, field_type="BINARY(16)", default=uuid7)
 
     # 审计字段
     created_at = fields.DatetimeField(auto_now_add=True, description='创建时间')

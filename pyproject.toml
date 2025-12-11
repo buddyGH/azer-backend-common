@@ -26,6 +26,7 @@ dependencies = [
     # Utilities
     "user-agents >=2.2.0",
     "pyyaml >=6.0.2",
+    "uuid7>=0.1.0",
 ]
 
 [dependency-groups]
