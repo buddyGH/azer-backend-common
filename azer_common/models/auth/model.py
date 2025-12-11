@@ -1,11 +1,16 @@
 # azer_common/models/auth/model.py
 import argon2
+from argon2 import PasswordHasher
 from tortoise import fields
 from azer_common.models.base import BaseModel
 from azer_common.models.enums.base import MFATypeEnum
 from azer_common.utils.time import add_days, utc_now
 from azer_common.utils.validators import validate_password
 from typing import Optional
+
+
+# 复用密码哈希单例
+PH_SINGLETON = PasswordHasher()
 
 
 class UserCredential(BaseModel):
@@ -128,6 +133,28 @@ class UserCredential(BaseModel):
             ("oauth_platform", "oauth_uid"),  # 复合索引
         ]
         unique_together = [("oauth_platform", "oauth_uid")]
+
+    class PydanticMeta:
+        include = {
+            # 核心标识
+            "id",
+            "user_id",
+            # 认证状态（非敏感）
+            "failed_login_attempts",
+            "password_changed_at",
+            "password_expires_at",
+            # MFA 状态（不含密钥）
+            "mfa_enabled",
+            "mfa_type",
+            "mfa_verified_at",
+            # 验证状态
+            "email_verified_at",
+            "mobile_verified_at",
+            # 登录统计（非敏感）
+            "login_count",
+            "last_login_at",
+            "last_login_ip",
+        }
 
     @property
     def is_verified(self) -> bool:

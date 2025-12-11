@@ -1,15 +1,11 @@
 from typing import Optional, List, Dict, Any
 import argon2
 from tortoise.transactions import in_transaction
-from azer_common.models.auth.model import UserCredential
+from azer_common.models.auth.model import PH_SINGLETON, UserCredential
 from azer_common.models.enums.base import MFATypeEnum
 from azer_common.repositories.base import BaseRepository
 from azer_common.utils.time import utc_now
 from azer_common.utils.validators import validate_password
-from argon2 import PasswordHasher
-
-# 复用密码哈希单例
-PH_SINGLETON = PasswordHasher()
 
 
 class UserCredentialRepository(BaseRepository[UserCredential]):
