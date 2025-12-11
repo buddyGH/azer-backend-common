@@ -81,7 +81,8 @@ class Role(BaseModel):
         null=True,
         on_delete=fields.SET_NULL,
         description='父角色（用于角色继承）'
-    )\
+    )
+
     # 扩展字段
     metadata = fields.JSONField(
         null=True,
@@ -93,7 +94,7 @@ class Role(BaseModel):
         table_description = '角色表（多租户+权限继承）'
         ordering = ["level", "code"]
         indexes = [
-            ("tenant_id", "parent_id"),  # 修正：parent 对应字段是 parent_id
+            ("tenant_id", "parent_id"),
             ("tenant_id", "code", "deleted_at"),
             ("tenant_id", "is_default"),
             ("tenant_id", "is_enabled", "deleted_at"),

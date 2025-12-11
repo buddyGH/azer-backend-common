@@ -43,7 +43,7 @@ class TenantUser(BaseModel):
     class Meta:
         table = "azer_tenant_user"
         table_description = '租户-用户关联表'
-        unique_together = ("role", "permission", "deleted_at")
+        unique_together = ("tenant", "user", "deleted_at")
         indexes = [
             ("tenant", "is_assigned"),
             ("user", "is_primary"),
