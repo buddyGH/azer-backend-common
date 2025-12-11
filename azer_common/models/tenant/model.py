@@ -4,6 +4,8 @@ from tortoise import fields
 from tortoise.transactions import in_transaction
 from azer_common.models.base import BaseModel
 from azer_common.models.relations.tenant_user import TenantUser
+from azer_common.models.relations.user_role import UserRole
+from azer_common.models.role.model import Role
 from azer_common.models.user.model import User
 from azer_common.utils.time import utc_now
 
@@ -223,3 +225,67 @@ class Tenant(BaseModel):
         将当前租户设为指定用户的主租户
         """
         return await TenantUser.set_primary_tenant(user=user, tenant=self)
+
+    # ========== 租户-角色关联便捷方法 ==========
+    async def assign_role_to_user(
+            self,
+            user: Union[int, User],
+            role: Union[int, Role],
+            expires_in_days: int = None,
+            metadata: Optional[Dict] = None
+    ) -> UserRole:
+        """
+        给租户下的用户分配角色（需要先确保用户属于该租户）
+        """
+        # 1. 检查用户是否属于该租户
+        if not await self.has_user(user):
+            raise ValueError(f"用户[{user}]不属于租户[{self.code}]")
+
+        # 2. 检查角色是否属于该租户
+        role_obj = await Role.objects.get(id=role) if isinstance(role, int) else role
+        if role_obj.tenant_id != self.id:
+            raise ValueError(f"角色[{role_obj.code}]不属于租户[{self.code}]")
+
+        # 3. 分配角色
+        return await UserRole.grant_role(
+            user=user,
+            role=role,
+            expires_in_days=expires_in_days,
+            metadata=metadata
+        )
+
+    async def get_user_roles(
+            self,
+            user: Union[int, User],
+            include_expired: bool = False,
+            include_revoked: bool = False
+    ) -> List[Role]:
+        """
+        获取用户在当前租户下的角色
+        """
+        if not await self.has_user(user):
+            raise ValueError(f"用户[{user}]不属于租户[{self.code}]")
+
+        user_roles = await UserRole.get_user_roles(
+            user=user,
+            include_expired=include_expired,
+            include_revoked=include_revoked,
+            tenant_id=self.id  # 按租户过滤
+        )
+        return [ur.role for ur in user_roles]
+
+    async def revoke_user_role(
+            self,
+            user: Union[int, User],
+            role: Union[int, Role]
+    ) -> bool:
+        """
+        撤销用户在当前租户下的角色
+        """
+        if not await self.has_user(user):
+            raise ValueError(f"用户[{user}]不属于租户[{self.code}]")
+
+        return await UserRole.revoke_role(
+            user=user,
+            role=role
+        )
