@@ -4,8 +4,10 @@ from tortoise import fields
 from tortoise.expressions import Q
 from azer_common.models.base import BaseModel
 from azer_common.models.enums.base import SexEnum, UserStatusEnum
+from azer_common.models.relations.tenant_user import TenantUser
 from azer_common.models.relations.user_role import UserRole
 from azer_common.models.role.model import Role
+from azer_common.models.tenant.model import Tenant
 from azer_common.utils.time import utc_now, today
 from azer_common.utils.validators import (
     validate_url, validate_username, validate_email,
@@ -269,5 +271,83 @@ class User(BaseModel):
             expires_in_days=expires_in_days
         )
 
+    # ========== 租户相关方法 ==========
+    async def get_tenants(self) -> List[Tenant]:
+        """
+        获取用户所属的所有租户
+        """
+        return await self.tenants.filter(is_deleted=False).all()
+
+    async def get_primary_tenant(self) -> Optional[Tenant]:
+        """
+        获取用户的主租户
+        """
+        tenant_user = await TenantUser.objects.filter(
+            user=self,
+            is_primary=True,
+            is_assigned=True,
+            is_deleted=False
+        ).first()
+        return tenant_user.tenant if tenant_user else None
+
+    # ========== 带租户参数的角色方法 ==========
+    async def assign_role_in_tenant(
+            self,
+            role: Union[int, Role],
+            tenant: Union[int, Tenant],
+            expires_in_days: int = None,
+            metadata: Optional[Dict] = None
+    ) -> UserRole:
+        """
+        在指定租户下为用户分配角色
+        """
+        # 检查用户是否属于该租户
+        if not await TenantUser.has_user(tenant=tenant, user=self, check_valid=True):
+            raise ValueError(f"用户[{self.username}]不属于租户[{tenant.code}]")
+
+        # 检查角色是否属于该租户
+        role_obj = await Role.objects.get(id=role) if isinstance(role, int) else role
+        if role_obj.tenant_id != (tenant.id if isinstance(tenant, Tenant) else tenant):
+            raise ValueError("角色不属于指定租户")
+
+        return await UserRole.grant_role(
+            user=self,
+            role=role,
+            expires_in_days=expires_in_days,
+            metadata=metadata
+        )
+
+    async def get_roles_in_tenant(
+            self,
+            tenant: Union[int, Tenant],
+            include_expired: bool = False,
+            include_revoked: bool = False
+    ) -> List[Role]:
+        """
+        获取用户在指定租户下的角色
+        """
+        user_roles = await UserRole.get_user_roles(
+            user=self,
+            include_expired=include_expired,
+            include_revoked=include_revoked,
+            tenant_id=tenant.id if isinstance(tenant, Tenant) else tenant
+        )
+        return [ur.role for ur in user_roles]
+
+    async def has_role_in_tenant(
+            self,
+            role: Union[int, Role, str],
+            tenant: Union[int, Tenant],
+            check_valid: bool = True
+    ) -> bool:
+        """
+        检查用户在指定租户下是否拥有指定角色
+        """
+        return await UserRole.has_role(
+            user=self,
+            role=role,
+            check_valid=check_valid,
+            tenant_id=tenant.id if isinstance(tenant, Tenant) else tenant
+        )
 
 import azer_common.models.user.signals
