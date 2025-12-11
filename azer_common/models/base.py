@@ -1,5 +1,4 @@
 # azer_common/models/base.py
-import uuid
 from uuid_extensions import uuid7
 from tortoise import fields, models
 from tortoise.manager import Manager
