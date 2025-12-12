@@ -1,4 +1,4 @@
-# azer_common/repositories/auth/repository.py
+# azer_common/repositories/permission/repository.py
 from azer_common.repositories.base_repository import BaseRepository
 from azer_common.models.permission.model import Permission
 from .components import (
