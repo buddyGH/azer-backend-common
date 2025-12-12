@@ -10,39 +10,41 @@ from azer_common.repositories.base_component import BaseComponent
 class UserBaseComponent(BaseComponent):
     """用户组件基类 - 提供公共方法和属性"""
 
+    # ========== 基础查询方法 ==========
     async def get_by_username(self, username: str) -> Optional[User]:
         """根据用户名获取用户"""
-        return await self.query().filter(username=username).first()
+        return await self.get_by_field('username', username)
 
     async def get_by_email(self, email: str) -> Optional[User]:
         """根据邮箱获取用户"""
-        return await self.query().filter(email=email).first()
+        return await self.get_by_field('email', email)
 
     async def get_by_mobile(self, mobile: str) -> Optional[User]:
         """根据手机号获取用户"""
-        return await self.query().filter(mobile=mobile).first()
+        return await self.get_by_field('mobile', mobile)
 
     async def get_by_identity_card(self, identity_card: str) -> Optional[User]:
         """根据身份证号获取用户"""
-        return await self.query().filter(identity_card=identity_card).first()
+        return await self.get_by_field('identity_card', identity_card)
 
-    async def check_username_exists(self, username: str, exclude_user_id: int = None) -> bool:
+    # ========== 存在性检查 ==========
+    async def check_username_exists(self, username: str, exclude_user_id: str = None) -> bool:
         """检查用户名是否存在"""
-        query = self.query().filter(username=username)
+        query = self.query.filter(username=username)
         if exclude_user_id:
             query = query.exclude(id=exclude_user_id)
         return await query.exists()
 
-    async def check_mobile_exists(self, email: str, exclude_user_id: int = None) -> bool:
+    async def check_email_exists(self, email: str, exclude_user_id: str = None) -> bool:
         """检查邮箱是否存在"""
-        query = self.query().filter(email=email)
+        query = self.query.filter(email=email)
         if exclude_user_id:
             query = query.exclude(id=exclude_user_id)
         return await query.exists()
 
-    async def check_email_exists(self, mobile: str, exclude_user_id: int = None) -> bool:
+    async def check_mobile_exists(self, mobile: str, exclude_user_id: str = None) -> bool:
         """检查手机号是否存在"""
-        query = self.query().filter(mobile=mobile)
+        query = self.query.filter(mobile=mobile)
         if exclude_user_id:
             query = query.exclude(id=exclude_user_id)
         return await query.exists()
@@ -59,23 +61,30 @@ class UserBaseComponent(BaseComponent):
         :param identity_card: 身份证号（可选）
         :param real_name: 真实姓名（可选）
         :param require_both_match: 是否需要同时匹配身份证号和真实姓名
-        :param exclude_user_id: 排除的用户ID（用于更新场景）
+        :param exclude_user_id: 排除的用户ID
         :return: (是否存在, 匹配到的用户对象)
         """
-        query = self.model.filter(is_deleted=False)
+        query = self.query
 
-        if identity_card:
-            query = query.filter(identity_card=identity_card)
-        if real_name:
-            query = query.filter(real_name=real_name)
-
-        if not require_both_match and (identity_card or real_name):
-            q_obj = Q()
+        if require_both_match:
+            # 需要同时匹配
             if identity_card:
-                q_obj |= Q(identity_card=identity_card)
+                query = query.filter(identity_card=identity_card)
             if real_name:
-                q_obj |= Q(real_name=real_name)
-            query = query.filter(q_obj)
+                query = query.filter(real_name=real_name)
+
+            if not (identity_card or real_name):
+                return False, None
+        else:
+            if identity_card or real_name:
+                q_obj = Q()
+                if identity_card:
+                    q_obj |= Q(identity_card=identity_card)
+                if real_name:
+                    q_obj |= Q(real_name=real_name)
+                query = query.filter(q_obj)
+            else:
+                return False, None
 
         if exclude_user_id:
             query = query.exclude(id=exclude_user_id)
@@ -92,7 +101,6 @@ class UserBaseComponent(BaseComponent):
         user = await self.get_by_id(user_id)
         if not user:
             return False
-        # 检查是否有is_system字段并判断值
         return hasattr(user, 'is_system') and user.is_system
 
     async def is_user_active(self, user_id: str) -> bool:
@@ -104,7 +112,6 @@ class UserBaseComponent(BaseComponent):
         user = await self.get_by_id(user_id)
         if not user:
             return False
-        # 复用User模型的is_active属性，保证逻辑统一
         return user.is_active
 
     async def is_user_blocked(self, user_id: str) -> bool:
@@ -116,7 +123,6 @@ class UserBaseComponent(BaseComponent):
         user = await self.get_by_id(user_id)
         if not user:
             return False
-        # 复用User模型的is_blocked属性
         return user.is_blocked
 
     async def get_display_name(self, user_id: str) -> Optional[str]:
@@ -128,7 +134,6 @@ class UserBaseComponent(BaseComponent):
         user = await self.get_by_id(user_id)
         if not user:
             return None
-        # 复用User模型的display_name属性
         return user.display_name
 
     async def get_user_age(self, user_id: str) -> Optional[int]:
@@ -140,5 +145,4 @@ class UserBaseComponent(BaseComponent):
         user = await self.get_by_id(user_id)
         if not user:
             return None
-        # 复用User模型的age属性，保证计算逻辑统一
         return user.age
