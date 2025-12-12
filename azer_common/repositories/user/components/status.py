@@ -1,7 +1,6 @@
 # azer_common/repositories/user/components/status.py
 from datetime import timedelta
 from typing import Any, Dict, List, Optional, Set, Tuple
-from tortoise.transactions import in_transaction
 from azer_common.models.enums.base import UserLifecycleStatus, UserSecurityStatus
 from azer_common.models.user.model import User
 from azer_common.repositories.base_component import BaseComponent
@@ -10,7 +9,6 @@ from azer_common.utils.time import utc_now
 
 
 class UserStatusComponent(BaseComponent):
-
 
     async def filter_by_status(
             self,
@@ -148,7 +146,7 @@ class UserStatusComponent(BaseComponent):
         :param operator_id: 操作者ID
         :return: (是否成功, 用户对象, 错误信息)
         """
-        async with in_transaction():
+        async with self.transaction:
             user = await self.model.filter(id=user_id, is_deleted=False).first()
             if not user:
                 return False, None, "用户不存在"
@@ -200,7 +198,7 @@ class UserStatusComponent(BaseComponent):
         :param operator_id: 操作者ID
         :return: (是否成功, 用户对象, 错误信息)
         """
-        async with in_transaction():
+        async with self.transaction:
             user = await self.model.filter(id=user_id, is_deleted=False).first()
             if not user:
                 return False, None, "用户不存在"
@@ -253,7 +251,7 @@ class UserStatusComponent(BaseComponent):
         :param operator_id: 操作者ID
         :return: (是否成功, 用户对象, 错误信息)
         """
-        async with in_transaction():
+        async with self.transaction:
             user = await self.model.filter(id=user_id, is_deleted=False).first()
             if not user:
                 return False, None, "用户不存在"
@@ -299,7 +297,7 @@ class UserStatusComponent(BaseComponent):
         :param operator_id: 操作者ID
         :return: (是否成功, 用户对象, 错误信息)
         """
-        async with in_transaction():
+        async with self.transaction:
             user = await self.model.filter(id=user_id, is_deleted=False).first()
             if not user:
                 return False, None, "用户不存在"
@@ -343,7 +341,7 @@ class UserStatusComponent(BaseComponent):
         :param operator_id: 操作者ID
         :return: (是否成功, 用户对象, 错误信息)
         """
-        async with in_transaction():
+        async with self.transaction:
             user = await self.model.filter(id=user_id, is_deleted=False).first()
             if not user:
                 return False, None, "用户不存在"
@@ -387,7 +385,7 @@ class UserStatusComponent(BaseComponent):
         :param operator_id: 操作者ID
         :return: (是否成功, 用户对象, 错误信息)
         """
-        async with in_transaction():
+        async with self.transaction:
             user = await self.model.filter(id=user_id, is_deleted=False).first()
             if not user:
                 return False, None, "用户不存在"
@@ -427,7 +425,7 @@ class UserStatusComponent(BaseComponent):
         :param force_reactive: 如果是不活跃状态，是否自动重新激活
         :return: 是否成功
         """
-        async with in_transaction():
+        async with self.transaction:
             user = await self.model.filter(id=user_id, is_deleted=False).first()
             if not user:
                 return False
@@ -460,7 +458,7 @@ class UserStatusComponent(BaseComponent):
         :param operator_id: 操作者ID
         :return: (是否成功, 用户对象, 错误信息)
         """
-        async with in_transaction():
+        async with self.transaction:
             user = await self.model.filter(id=user_id, is_deleted=False).first()
             if not user:
                 return False, None, "用户不存在"
