@@ -1,6 +1,6 @@
 # azer_common/repositories/user/components/status.py
 from datetime import timedelta
-from typing import List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 from tortoise.transactions import in_transaction
 from azer_common.models.enums.base import UserLifecycleStatus, UserSecurityStatus
 from azer_common.models.user.model import User
@@ -10,7 +10,9 @@ from azer_common.utils.time import utc_now
 
 
 class UserStatusComponent(BaseComponent):
-    async def get_users_by_lifecycle_status(
+
+
+    async def filter_by_status(
             self,
             status: UserLifecycleStatus,
             tenant_id: Optional[str] = None,
@@ -20,10 +22,10 @@ class UserStatusComponent(BaseComponent):
             order_by: str = "-created_at"
     ) -> Tuple[List[User], int]:
         """
-        按生命周期状态获取用户
+        按生命周期状态过滤用户（替代原get_users_by_lifecycle_status）
         :param status: 生命周期状态
         :param tenant_id: 租户ID（可选）
-        :param include_blocked: 是否包含被阻止的用户
+        :param include_blocked: 是否包含被安全限制的用户
         :param offset: 分页偏移量
         :param limit: 分页大小
         :param order_by: 排序字段
@@ -40,15 +42,13 @@ class UserStatusComponent(BaseComponent):
         if tenant_id:
             query = query.filter(tenants__id=tenant_id)
 
-        # 获取总数
+        # 优化：先count再分页，避免重复查询
         total = await query.count()
-
-        # 分页查询
         users = await query.distinct().offset(offset).limit(limit).order_by(order_by)
 
         return users, total
 
-    async def get_users_by_security_status(
+    async def filter_by_security_status(
             self,
             security_status: UserSecurityStatus,
             tenant_id: Optional[str] = None,
@@ -57,7 +57,7 @@ class UserStatusComponent(BaseComponent):
             order_by: str = "-created_at"
     ) -> Tuple[List[User], int]:
         """
-        按安全状态获取用户
+        按安全状态过滤用户（替代原get_users_by_security_status）
         :param security_status: 安全状态
         :param tenant_id: 租户ID（可选）
         :param offset: 分页偏移量
@@ -73,193 +73,12 @@ class UserStatusComponent(BaseComponent):
         if tenant_id:
             query = query.filter(tenants__id=tenant_id)
 
-        # 获取总数
         total = await query.count()
-
-        # 分页查询
         users = await query.distinct().offset(offset).limit(limit).order_by(order_by)
 
         return users, total
-
-    async def get_active_users(
-            self,
-            tenant_id: Optional[str] = None,
-            min_last_active_days: Optional[int] = None,
-            offset: int = 0,
-            limit: int = 20,
-            order_by: str = "-last_active_at"
-    ) -> Tuple[List[User], int]:
-        """
-        获取活跃用户（ACTIVE状态且无安全限制）
-        :param tenant_id: 租户ID
-        :param min_last_active_days: 最近活跃天数（可选）
-        :param offset: 分页偏移量
-        :param limit: 分页大小
-        :param order_by: 排序字段
-        :return: (用户列表, 总数量)
-        """
-        query = self.model.filter(
-            status=UserLifecycleStatus.ACTIVE,
-            security_status__isnull=True,
-            is_deleted=False
-        )
-
-        if tenant_id:
-            query = query.filter(tenants__id=tenant_id)
-
-        if min_last_active_days is not None and min_last_active_days > 0:
-            cutoff_date = utc_now() - timedelta(days=min_last_active_days)
-            query = query.filter(last_active_at__gte=cutoff_date)
-
-        # 获取总数
-        total = await query.count()
-
-        # 分页查询
-        users = await query.distinct().offset(offset).limit(limit).order_by(order_by)
-
-        return users, total
-
-    async def get_inactive_users(
-            self,
-            tenant_id: Optional[str] = None,
-            inactive_days: int = 30,
-            offset: int = 0,
-            limit: int = 20,
-            order_by: str = "-last_active_at"
-    ) -> Tuple[List[User], int]:
-        """
-        获取不活跃用户（INACTIVE状态或长时间未活跃的ACTIVE用户）
-        :param tenant_id: 租户ID
-        :param inactive_days: 不活跃天数阈值
-        :param offset: 分页偏移量
-        :param limit: 分页大小
-        :param order_by: 排序字段
-        :return: (用户列表, 总数量)
-        """
-        cutoff_date = utc_now() - timedelta(days=inactive_days)
-
-        # 获取INACTIVE状态的用户
-        inactive_query = self.model.filter(
-            status=UserLifecycleStatus.INACTIVE,
-            is_deleted=False
-        )
-
-        # 获取长时间未活跃的ACTIVE用户
-        inactive_active_query = self.model.filter(
-            status=UserLifecycleStatus.ACTIVE,
-            security_status__isnull=True,
-            last_active_at__lt=cutoff_date,
-            is_deleted=False
-        )
-
-        # 合并查询
-        query = inactive_query | inactive_active_query
-
-        if tenant_id:
-            query = query.filter(tenants__id=tenant_id)
-
-        # 获取总数
-        total = await query.count()
-
-        # 分页查询
-        users = await query.distinct().offset(offset).limit(limit).order_by(order_by)
-
-        return users, total
-
-    async def get_users_needing_review(
-            self,
-            tenant_id: Optional[str] = None,
-            offset: int = 0,
-            limit: int = 20,
-            order_by: str = "-created_at"
-    ) -> Tuple[List[User], int]:
-        """
-        获取需要审核的用户（PENDING状态）
-        :param tenant_id: 租户ID
-        :param offset: 分页偏移量
-        :param limit: 分页大小
-        :param order_by: 排序字段
-        :return: (用户列表, 总数量)
-        """
-        return await self.get_users_by_lifecycle_status(
-            status=UserLifecycleStatus.PENDING,
-            tenant_id=tenant_id,
-            offset=offset,
-            limit=limit,
-            order_by=order_by
-        )
-
-    async def get_frozen_users(
-            self,
-            tenant_id: Optional[str] = None,
-            offset: int = 0,
-            limit: int = 20,
-            order_by: str = "-frozen_at"
-    ) -> Tuple[List[User], int]:
-        """
-        获取冻结用户
-        :param tenant_id: 租户ID
-        :param offset: 分页偏移量
-        :param limit: 分页大小
-        :param order_by: 排序字段
-        :return: (用户列表, 总数量)
-        """
-        return await self.get_users_by_security_status(
-            security_status=UserSecurityStatus.FROZEN,
-            tenant_id=tenant_id,
-            offset=offset,
-            limit=limit,
-            order_by=order_by
-        )
-
-    async def get_banned_users(
-            self,
-            tenant_id: Optional[str] = None,
-            offset: int = 0,
-            limit: int = 20,
-            order_by: str = "-banned_at"
-    ) -> Tuple[List[User], int]:
-        """
-        获取封禁用户
-        :param tenant_id: 租户ID
-        :param offset: 分页偏移量
-        :param limit: 分页大小
-        :param order_by: 排序字段
-        :return: (用户列表, 总数量)
-        """
-        return await self.get_users_by_security_status(
-            security_status=UserSecurityStatus.BANNED,
-            tenant_id=tenant_id,
-            offset=offset,
-            limit=limit,
-            order_by=order_by
-        )
-
-    async def get_closed_users(
-            self,
-            tenant_id: Optional[str] = None,
-            offset: int = 0,
-            limit: int = 20,
-            order_by: str = "-closed_at"
-    ) -> Tuple[List[User], int]:
-        """
-        获取已注销用户
-        :param tenant_id: 租户ID
-        :param offset: 分页偏移量
-        :param limit: 分页大小
-        :param order_by: 排序字段
-        :return: (用户列表, 总数量)
-        """
-        return await self.get_users_by_lifecycle_status(
-            status=UserLifecycleStatus.CLOSED,
-            tenant_id=tenant_id,
-            offset=offset,
-            limit=limit,
-            order_by=order_by
-        )
 
     # ========== 状态检查方法 ==========
-
     async def is_user_active(self, user_id: str) -> bool:
         """检查用户是否可用（活跃且无限制）"""
         user = await self.get_by_id(user_id)
@@ -752,6 +571,35 @@ class UserStatusComponent(BaseComponent):
                 failed_ids.append(user_id)
 
         return success_count, failed_ids
+
+    async def get_user_status_history(
+            self,
+            user_id: str,
+            limit: int = 50
+    ) -> List[Dict[str, Any]]:
+        """
+        获取用户状态变更历史
+        :param user_id: 用户ID
+        :param limit: 返回数量限制
+        :return: 状态变更历史列表
+        """
+        user = await self.get_by_id(user_id)
+        if not user or not user.metadata:
+            return []
+
+        history = []
+
+        # 从metadata中提取状态变更历史
+        if "status_changes" in user.metadata:
+            history.extend(user.metadata["status_changes"])
+
+        if "security_status_changes" in user.metadata:
+            history.extend(user.metadata["security_status_changes"])
+
+        # 按时间排序
+        history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+
+        return history[:limit]
 
     # ========== 内部辅助方法 ==========
 

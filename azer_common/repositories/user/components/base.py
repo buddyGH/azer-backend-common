@@ -10,7 +10,7 @@ from azer_common.repositories.base_component import BaseComponent
 
 
 class UserBaseComponent(BaseComponent):
-    """用户组件基类 - 提供公共方法和属性"""
+    """用户组件基础组件"""
 
     # ========== 基础查询方法 ==========
     async def get_by_username(self, username: str) -> Optional[User]:
@@ -28,6 +28,40 @@ class UserBaseComponent(BaseComponent):
     async def get_by_identity_card(self, identity_card: str) -> Optional[User]:
         """根据身份证号获取用户"""
         return await self.get_by_field('identity_card', identity_card)
+
+    async def get_with_credential(self, user_id: str) -> Optional[User]:
+        """
+        获取用户并关联认证凭证信息（密码/验证码/第三方登录等）
+        :param user_id: 用户ID
+        :return: 包含认证凭证的用户实例/None
+        """
+        # 关联查询用户认证凭证（一对一关系）
+        user = await self.model.filter(id=user_id, is_deleted=False).select_related(
+            "credential"  # 关联UserCredential模型（外键关联User）
+        ).first()
+        return user
+
+    async def get_display_name(self, user_id: str) -> Optional[str]:
+        """
+        获取用户显示名称（优先级：真实姓名 > 昵称 > 用户名）
+        :param user_id: 用户ID
+        :return: 显示名称/None
+        """
+        user = await self.get_by_id(user_id)
+        if not user:
+            return None
+        return user.display_name
+
+    async def get_user_age(self, user_id: str) -> Optional[int]:
+        """
+        获取用户年龄（基于生日计算）
+        :param user_id: 用户ID
+        :return: 年龄/None（无生日时返回None）
+        """
+        user = await self.get_by_id(user_id)
+        if not user:
+            return None
+        return user.age
 
     # ========== 存在性检查 ==========
     async def check_username_exists(self, username: str, exclude_user_id: str = None) -> bool:
@@ -94,38 +128,51 @@ class UserBaseComponent(BaseComponent):
         user = await query.first()
         return user is not None, user
 
-    async def is_user_system(self, user_id: str) -> bool:
+    async def update_avatar(self, user_id: str, avatar_url: Optional[str]) -> Optional[User]:
         """
-        检查用户是否为系统用户（系统用户不可删除/修改关键信息）
+        单独更新用户头像（精细化控制，支持清空头像）
         :param user_id: 用户ID
-        :return: 是系统用户返回True，否则False
+        :param avatar_url: 头像URL（None/空字符串表示清空）
+        :return: 更新后的用户实例/None
         """
-        user = await self.get_by_id(user_id)
-        if not user:
-            return False
-        return hasattr(user, 'is_system') and user.is_system
+        async with in_transaction():
+            user = await self.get_by_id(user_id)
+            if not user:
+                return None
 
-    async def get_display_name(self, user_id: str) -> Optional[str]:
-        """
-        获取用户显示名称（优先级：真实姓名 > 昵称 > 用户名）
-        :param user_id: 用户ID
-        :return: 显示名称/None
-        """
-        user = await self.get_by_id(user_id)
-        if not user:
-            return None
-        return user.display_name
+            # 系统用户限制修改头像
+            if await self.is_user_system(user_id):
+                raise ValueError("系统用户不允许修改头像")
 
-    async def get_user_age(self, user_id: str) -> Optional[int]:
+            # 校验头像URL格式（非清空场景）
+            if avatar_url is not None and avatar_url.strip() != "":
+                user.avatar = avatar_url.strip()
+            else:
+                user.avatar = None
+
+            await user.save(update_fields=["avatar", "updated_at"])
+            return user
+
+    async def update_nickname(self, user_id: str, nick_name: str) -> Optional[User]:
         """
-        获取用户年龄（基于生日计算）
+        单独更新用户昵称（强化格式/长度校验）
         :param user_id: 用户ID
-        :return: 年龄/None（无生日时返回None）
+        :param nick_name: 新昵称（非空）
+        :return: 更新后的用户实例/None
         """
-        user = await self.get_by_id(user_id)
-        if not user:
-            return None
-        return user.age
+        async with in_transaction():
+            user = await self.get_by_id(user_id)
+            if not user:
+                return None
+
+            # 系统用户限制修改昵称
+            if await self.is_user_system(user_id):
+                raise ValueError("系统用户不允许修改昵称")
+
+            # 更新昵称（自动触发display_name重新计算）
+            user.nick_name = nick_name
+            await user.save(update_fields=["nick_name", "updated_at"])
+            return user
 
     async def update_profile(
             self,
@@ -331,3 +378,14 @@ class UserBaseComponent(BaseComponent):
 
             await user.save(update_fields=["preferences", "updated_at"])
             return user
+
+    async def is_user_system(self, user_id: str) -> bool:
+        """
+        检查用户是否为系统用户（系统用户不可删除/修改关键信息）
+        :param user_id: 用户ID
+        :return: 是系统用户返回True，否则False
+        """
+        user = await self.get_by_id(user_id)
+        if not user:
+            return False
+        return hasattr(user, 'is_system') and user.is_system
