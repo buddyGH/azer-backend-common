@@ -10,10 +10,10 @@ T = TypeVar('T', bound=BaseModel)
 class IRepository(Generic[T]):
     """Repository 接口定义"""
 
-    async def get_by_id(self, id: int) -> Optional[T]:
+    async def get_by_id(self, id: str) -> Optional[T]:
         raise NotImplementedError
 
-    async def get_by_ids(self, ids: List[int]) -> List[T]:
+    async def get_by_ids(self, ids: List[str]) -> List[T]:
         raise NotImplementedError
 
     async def exists(self, **filters) -> bool:
