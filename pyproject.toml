@@ -153,7 +153,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "conftest.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --strict-markers --cov=app --cov-report=term-missing"
+addopts = "-v --strict-markers"
 asyncio_mode = "auto"
 filterwarnings = [
     "error",
