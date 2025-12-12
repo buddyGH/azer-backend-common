@@ -17,9 +17,6 @@ class Permission(BaseModel):
     description = fields.CharField(max_length=200, null=True, description="权限详细描述")
 
     # 关联字段
-    roles = fields.ManyToManyField(
-        "models.Role", through="azer_role_permission", related_name="permissions", description="拥有该权限的角色列表"
-    )
     tenant = fields.ForeignKeyField(
         "models.Tenant",
         related_name="permissions_list",

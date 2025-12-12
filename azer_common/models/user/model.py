@@ -59,15 +59,6 @@ class User(BaseModel):
     home_path = fields.CharField(max_length=500, null=True, description="个人主页路径")
     preferences = fields.JSONField(null=True, description="用户偏好设置", default=dict)
 
-    # 关系字段
-    roles = fields.ManyToManyField(
-        "models.Role", related_name="users", through="azer_user_role", description="用户角色"
-    )
-
-    tenants = fields.ManyToManyField(
-        "models.Tenant", related_name="users", through="azer_tenant_user", description="用户属于多个租户"
-    )
-
     class Meta:
         table = "azer_user"
         table_description = "用户表"

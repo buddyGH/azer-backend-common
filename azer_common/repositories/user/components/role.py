@@ -1,4 +1,4 @@
-# azer_common/repositories/user/components/role.py
+# azer_common/repositories/user/components/user_role.py
 from typing import Any, Dict, List, Optional, Tuple
 from azer_common.models.relations.tenant_user import TenantUser
 from azer_common.models.relations.user_role import UserRole

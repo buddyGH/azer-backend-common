@@ -1,10 +1,7 @@
 # azer_common/models/audit/signals.py
 from typing import Dict
 from tortoise.signals import post_save
-
-from azer_common.models.audit.role import UserRoleAudit
 from azer_common.models.enums.base import RolePermissionOperationType, UserRoleOperationType
-from azer_common.models.audit.role_permission import RolePermissionAudit
 from azer_common.utils.time import utc_now
 
 
@@ -36,6 +33,8 @@ async def handle_role_permission_save(_sender, instance, _created, _using_db, _u
     """
     监听RolePermission保存事件，生成审计日志
     """
+    from azer_common.models.audit.role_permission import RolePermissionAudit
+
     # 从上下文获取审计参数
     context = role_permission_operation_context.pop(instance.id, None)
     if not context:
@@ -82,6 +81,8 @@ def set_user_role_operation_context(
 @post_save()
 async def handle_user_role_save(_sender, instance, _created, _using_db, _update_fields) -> None:
     """监听UserRole保存事件，生成审计日志"""
+    from azer_common.models.audit.user_role import UserRoleAudit
+
     # 从上下文获取审计参数
     audit_context = user_role_operation_context.pop(instance.id, None)
     if not audit_context:

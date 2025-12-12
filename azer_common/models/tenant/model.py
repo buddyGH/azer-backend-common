@@ -24,11 +24,6 @@ class Tenant(BaseModel):
     mobile = fields.CharField(max_length=15, null=True, description="租户联系电话")
     config = fields.JSONField(null=True, description="租户自定义配置（如权限策略、功能开关）")
 
-    # 关联字段
-    users = fields.ManyToManyField(
-        "models.User", related_name="tenants", through="azer_tenant_user", description="租户下的用户列表"
-    )
-
     class Meta:
         table = "azer_tenant"
         table_description = "租户表"

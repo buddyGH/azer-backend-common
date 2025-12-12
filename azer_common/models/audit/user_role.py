@@ -1,7 +1,6 @@
-# azer_common/models/audit/role.py
+# azer_common/models/audit/user_role.py
 from typing import Any, Dict
 from tortoise import fields
-
 from azer_common.models.base import BaseModel
 from azer_common.models.enums.base import UserRoleOperationType
 from azer_common.utils.time import utc_now
@@ -56,3 +55,6 @@ class UserRoleAudit(BaseModel):
             "after_data": self.after_data,
             "tenant_id": self.tenant_id,
         }
+
+
+from azer_common.models.audit.signals import handle_role_permission_save

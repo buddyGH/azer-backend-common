@@ -1,4 +1,4 @@
-# azer_common/repositories/tenant/components/role.py
+# azer_common/repositories/tenant/components/user_role.py
 from typing import Optional, List, Dict, Any, Tuple
 from tortoise.expressions import Q
 from azer_common.models.role.model import Role

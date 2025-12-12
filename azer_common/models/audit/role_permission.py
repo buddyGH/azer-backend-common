@@ -1,8 +1,6 @@
 # azer_common/models/audit/role_permission.py
 from typing import Any, Dict
-
 from tortoise import fields
-
 from azer_common.models.base import BaseModel
 from azer_common.models.enums.base import RolePermissionOperationType
 from azer_common.utils.time import utc_now
@@ -56,3 +54,6 @@ class RolePermissionAudit(BaseModel):
             "after_data": self.after_data,
             "tenant_id": self.tenant_id,
         }
+
+
+from azer_common.models.audit.signals import handle_role_permission_save

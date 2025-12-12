@@ -26,16 +26,6 @@ class Role(BaseModel):
         null=False,
     )
 
-    # 权限关联字段
-    permissions = fields.ManyToManyField(
-        "models.Permission",
-        through="azer_role_permission",
-        related_name="roles",
-        description="角色关联的权限列表",
-        forward_key="role_id",
-        backward_key="permission_id",
-    )
-
     # 系统控制字段
     is_system = fields.BooleanField(
         default=False, description="是否系统内置角色（不可删除、设置父角色、标记为默认角色）"
