@@ -12,13 +12,13 @@ role_permission_operation_context = {}
 
 
 def set_role_permission_operation_context(
-        role_permission_id: int,
-        operation_type: RolePermissionOperationType,
-        operated_by=None,
-        reason: str = None,
-        metadata: Dict = None,
-        before_data: Dict = None,
-        after_data: Dict = None
+    role_permission_id: int,
+    operation_type: RolePermissionOperationType,
+    operated_by=None,
+    reason: str = None,
+    metadata: Dict = None,
+    before_data: Dict = None,
+    after_data: Dict = None,
 ):
     """设置权限操作上下文（供业务层调用，传递审计参数）"""
     role_permission_operation_context[role_permission_id] = {
@@ -60,13 +60,13 @@ user_role_operation_context = {}
 
 
 def set_user_role_operation_context(
-        user_role_id: int,
-        operation_type: UserRoleOperationType,
-        operated_by=None,
-        reason=None,
-        metadata=None,
-        before_data=None,
-        after_data=None
+    user_role_id: int,
+    operation_type: UserRoleOperationType,
+    operated_by=None,
+    reason=None,
+    metadata=None,
+    before_data=None,
+    after_data=None,
 ):
     """设置用户角色操作上下文（供业务层调用，传递审计参数）"""
     user_role_operation_context[user_role_id] = {

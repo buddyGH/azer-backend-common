@@ -30,13 +30,13 @@ async def sync_user_email_mobile(_sender, instance: User, _using_db, update_fiel
         return
 
     # 邮箱变更：重置验证状态
-    if 'email' in update_fields and instance.email != old_instance.email:
+    if "email" in update_fields and instance.email != old_instance.email:
         if auth.email_verified_at:
             auth.email_verified_at = None
-            await auth.save(update_fields=['email_verified_at'])
+            await auth.save(update_fields=["email_verified_at"])
 
     # 手机号变更：重置验证状态
-    if 'mobile' in update_fields and instance.mobile != old_instance.mobile:
+    if "mobile" in update_fields and instance.mobile != old_instance.mobile:
         if auth.mobile_verified_at:
             auth.mobile_verified_at = None
-            await auth.save(update_fields=['mobile_verified_at'])
+            await auth.save(update_fields=["mobile_verified_at"])

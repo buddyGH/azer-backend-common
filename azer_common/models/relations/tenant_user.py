@@ -5,47 +5,25 @@ from azer_common.utils.time import utc_now
 
 class TenantUser(BaseModel):
     """租户用户关联表，管理用户与租户的归属关系"""
+
     # 核心关联字段
     tenant = fields.ForeignKeyField(
-        'models.Tenant',
-        related_name='tenant_users',
-        on_delete=fields.RESTRICT,
-        description='关联租户',
-        null=False
+        "models.Tenant", related_name="tenant_users", on_delete=fields.RESTRICT, description="关联租户", null=False
     )
     user = fields.ForeignKeyField(
-        'models.User',
-        related_name='user_tenants',
-        on_delete=fields.RESTRICT,
-        description='关联用户',
-        null=False
+        "models.User", related_name="user_tenants", on_delete=fields.RESTRICT, description="关联用户", null=False
     )
 
     # 状态控制字段
-    is_primary = fields.BooleanField(
-        default=False,
-        description='是否用户的主租户（一个用户仅一个主租户）'
-    )
-    is_assigned = fields.BooleanField(
-        default=True,
-        description='是否已分配（取消分配则置为False）'
-    )
-    expires_at = fields.DatetimeField(
-        null=True,
-        description='关联过期时间（null表示永久有效）'
-    )
-    metadata = fields.JSONField(
-        null=True,
-        description='关联元数据（如分配原因、权限范围）'
-    )
+    is_primary = fields.BooleanField(default=False, description="是否用户的主租户（一个用户仅一个主租户）")
+    is_assigned = fields.BooleanField(default=True, description="是否已分配（取消分配则置为False）")
+    expires_at = fields.DatetimeField(null=True, description="关联过期时间（null表示永久有效）")
+    metadata = fields.JSONField(null=True, description="关联元数据（如分配原因、权限范围）")
 
     class Meta:
         table = "azer_tenant_user"
-        table_description = '租户-用户关联表'
-        unique_together = [
-            ("tenant_id", "user_id", "is_deleted"),
-            ("user_id", "is_primary", "is_deleted")
-        ]
+        table_description = "租户-用户关联表"
+        unique_together = [("tenant_id", "user_id", "is_deleted"), ("user_id", "is_primary", "is_deleted")]
         indexes = [
             ("tenant_id", "is_assigned", "is_deleted"),
             ("user_id", "is_primary", "is_assigned"),
@@ -61,8 +39,8 @@ class TenantUser(BaseModel):
 
     def __str__(self):
         """租户用户关联实例的字符串表示，兼容关联未加载场景"""
-        tenant_code = getattr(self.tenant, 'code', self.tenant_id) if self.tenant_id else '未知租户'
-        username = getattr(self.user, 'username', self.user_id) if self.user_id else '未知用户'
+        tenant_code = getattr(self.tenant, "code", self.tenant_id) if self.tenant_id else "未知租户"
+        username = getattr(self.user, "username", self.user_id) if self.user_id else "未知用户"
         return f"租户[{tenant_code}] - 用户[{username}]"
 
     async def save(self, *args, **kwargs):

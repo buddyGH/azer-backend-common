@@ -11,12 +11,7 @@ class UserRoleComponent(BaseComponent):
     """用户角色管理组件"""
 
     async def get_user_roles(
-            self,
-            user_id: str,
-            tenant_id: str,
-            is_valid: bool = True,
-            offset: int = 0,
-            limit: int = 20
+        self, user_id: str, tenant_id: str, is_valid: bool = True, offset: int = 0, limit: int = 20
     ) -> Tuple[List[Role], int]:
         """
         获取用户在指定租户下的角色列表
@@ -35,9 +30,7 @@ class UserRoleComponent(BaseComponent):
 
         # 过滤有效角色关联
         if is_valid:
-            query = query.filter(is_assigned=True).exclude(
-                expires_at__lte=utc_now()
-            )
+            query = query.filter(is_assigned=True).exclude(expires_at__lte=utc_now())
 
         # 关联角色数据并分页
         query = query.select_related("role").order_by("-created_at")
@@ -54,12 +47,12 @@ class UserRoleComponent(BaseComponent):
         return roles, total
 
     async def assign_role_to_user(
-            self,
-            user_id: str,
-            role_id: str,
-            tenant_id: str,
-            expires_at: Optional[Any] = None,
-            metadata: Optional[Dict[str, Any]] = None
+        self,
+        user_id: str,
+        role_id: str,
+        tenant_id: str,
+        expires_at: Optional[Any] = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> UserRole:
         """
         为用户分配指定租户下的角色
@@ -76,19 +69,13 @@ class UserRoleComponent(BaseComponent):
                 raise ValueError(f"用户不存在: {user_id}")
 
             # 2. 校验角色有效性及租户一致性
-            role = await Role.objects.filter(
-                id=role_id,
-                tenant_id=tenant_id,
-                is_enabled=True
-            ).first()
+            role = await Role.objects.filter(id=role_id, tenant_id=tenant_id, is_enabled=True).first()
             if not role:
                 raise ValueError(f"租户{tenant_id}下的角色{role_id}不存在或已禁用")
 
             # 3. 校验用户-租户关联有效性
             tenant_user = await TenantUser.objects.filter(
-                user_id=user_id,
-                tenant_id=tenant_id,
-                is_assigned=True
+                user_id=user_id, tenant_id=tenant_id, is_assigned=True
             ).first()
             if not tenant_user:
                 raise ValueError(f"用户{user_id}未关联到租户{tenant_id}")
@@ -98,11 +85,7 @@ class UserRoleComponent(BaseComponent):
                 user_id=user_id,
                 role_id=role_id,
                 tenant_id=tenant_id,
-                defaults={
-                    "is_assigned": True,
-                    "expires_at": expires_at,
-                    "metadata": metadata or {}
-                }
+                defaults={"is_assigned": True, "expires_at": expires_at, "metadata": metadata or {}},
             )
 
             if not created:
@@ -114,13 +97,7 @@ class UserRoleComponent(BaseComponent):
 
             return user_role
 
-    async def revoke_role_from_user(
-            self,
-            user_id: str,
-            role_id: str,
-            tenant_id: str,
-            soft_delete: bool = True
-    ) -> bool:
+    async def revoke_role_from_user(self, user_id: str, role_id: str, tenant_id: str, soft_delete: bool = True) -> bool:
         """
         撤销用户在指定租户下的角色
         :param user_id: 用户ID
@@ -151,10 +128,7 @@ class UserRoleComponent(BaseComponent):
             return True
 
     async def batch_assign_roles(
-            self,
-            user_id: str,
-            tenant_id: str,
-            role_data_list: List[Dict[str, Any]]
+        self, user_id: str, tenant_id: str, role_data_list: List[Dict[str, Any]]
     ) -> Tuple[int, List[UserRole]]:
         """
         批量为用户分配多个租户下的角色（单用户+单租户+多角色）
@@ -173,20 +147,16 @@ class UserRoleComponent(BaseComponent):
 
             # 2. 校验用户-租户关联
             tenant_user = await TenantUser.objects.filter(
-                user_id=user_id,
-                tenant_id=tenant_id,
-                is_assigned=True
+                user_id=user_id, tenant_id=tenant_id, is_assigned=True
             ).first()
             if not tenant_user:
                 raise ValueError(f"用户{user_id}未关联到租户{tenant_id}")
 
             # 3. 批量校验角色有效性
             role_ids = [data.get("role_id") for data in role_data_list if data.get("role_id")]
-            valid_roles = await Role.objects.filter(
-                id__in=role_ids,
-                tenant_id=tenant_id,
-                is_enabled=True
-            ).values_list("id", flat=True)
+            valid_roles = await Role.objects.filter(id__in=role_ids, tenant_id=tenant_id, is_enabled=True).values_list(
+                "id", flat=True
+            )
             valid_role_ids = set(valid_roles)
 
             # 4. 批量分配角色
@@ -204,7 +174,7 @@ class UserRoleComponent(BaseComponent):
                         role_id=role_id,
                         tenant_id=tenant_id,
                         expires_at=role_data.get("expires_at"),
-                        metadata=role_data.get("metadata")
+                        metadata=role_data.get("metadata"),
                     )
                     created_relations.append(user_role)
                     success_count += 1
@@ -215,11 +185,7 @@ class UserRoleComponent(BaseComponent):
             return success_count, created_relations
 
     async def batch_revoke_roles(
-            self,
-            user_id: str,
-            tenant_id: str,
-            role_ids: List[str],
-            soft_delete: bool = True
+        self, user_id: str, tenant_id: str, role_ids: List[str], soft_delete: bool = True
     ) -> int:
         """
         批量撤销用户在指定租户下的角色
@@ -239,17 +205,9 @@ class UserRoleComponent(BaseComponent):
                     user_id=user_id,
                     tenant_id=tenant_id,
                     role_id__in=role_ids,
-                ).update(
-                    is_assigned=False,
-                    is_deleted=True,
-                    deleted_at=utc_now()
-                )
+                ).update(is_assigned=False, is_deleted=True, deleted_at=utc_now())
             else:
                 # 批量物理删除
-                result = await UserRole.filter(
-                    user_id=user_id,
-                    tenant_id=tenant_id,
-                    role_id__in=role_ids
-                ).delete()
+                result = await UserRole.filter(user_id=user_id, tenant_id=tenant_id, role_id__in=role_ids).delete()
 
             return result if isinstance(result, int) else 0

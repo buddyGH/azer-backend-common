@@ -7,13 +7,7 @@ from azer_common.repositories.base_component import BaseComponent
 
 class TenantRoleComponent(BaseComponent):
 
-    async def create_role_in_tenant(
-            self,
-            tenant_id: str,
-            code: str,
-            name: str,
-            **kwargs
-    ) -> Role:
+    async def create_role_in_tenant(self, tenant_id: str, code: str, name: str, **kwargs) -> Role:
         """
         在租户下创建角色
         :param tenant_id: 租户ID
@@ -28,26 +22,14 @@ class TenantRoleComponent(BaseComponent):
                 raise ValueError(f"租户不存在: {tenant_id}")
 
             # 2. 检查角色编码在租户内的唯一性（排除软删除）
-            query = Role.objects.filter(
-                code=code,
-                tenant_id=tenant_id
-            )
+            query = Role.objects.filter(code=code, tenant_id=tenant_id)
             if await query.exists():
                 raise ValueError(f"角色编码已存在于当前租户: {code}")
 
             # 3. 创建角色
-            return await Role.create(
-                tenant_id=tenant_id,
-                code=code,
-                name=name,
-                **kwargs
-            )
+            return await Role.create(tenant_id=tenant_id, code=code, name=name, **kwargs)
 
-    async def delete_role_from_tenant(
-            self,
-            tenant_id: str,
-            role_id: str
-    ) -> bool:
+    async def delete_role_from_tenant(self, tenant_id: str, role_id: str) -> bool:
         """
         从租户中删除角色（软删除）
         :param tenant_id: 租户ID
@@ -55,10 +37,7 @@ class TenantRoleComponent(BaseComponent):
         :return: 操作成功返回True
         """
         # 查找角色，确保它属于指定的租户且未被删除
-        role = await Role.objects.filter(
-            id=role_id,
-            tenant_id=tenant_id
-        ).first()
+        role = await Role.objects.filter(id=role_id, tenant_id=tenant_id).first()
 
         if not role:
             return False
@@ -71,12 +50,7 @@ class TenantRoleComponent(BaseComponent):
         await role.soft_delete()
         return True
 
-    async def update_tenant_role(
-            self,
-            tenant_id: str,
-            role_id: str,
-            **kwargs
-    ) -> Optional[Role]:
+    async def update_tenant_role(self, tenant_id: str, role_id: str, **kwargs) -> Optional[Role]:
         """
         更新租户下的角色
         :param tenant_id: 租户ID
@@ -85,10 +59,7 @@ class TenantRoleComponent(BaseComponent):
         :return: 更新后的角色实例或None
         """
         # 查找角色，确保它属于指定的租户且未被删除
-        role = await Role.objects.filter(
-            id=role_id,
-            tenant_id=tenant_id
-        ).first()
+        role = await Role.objects.filter(id=role_id, tenant_id=tenant_id).first()
 
         if not role:
             return None
@@ -96,10 +67,7 @@ class TenantRoleComponent(BaseComponent):
         # 若要更新编码，检查新编码在租户内的唯一性（排除自身和软删除记录）
         if "code" in kwargs:
             new_code = kwargs["code"]
-            exists = await Role.objects.filter(
-                code=new_code,
-                tenant_id=tenant_id
-            ).exclude(id=role_id).exists()
+            exists = await Role.objects.filter(code=new_code, tenant_id=tenant_id).exclude(id=role_id).exists()
             if exists:
                 raise ValueError(f"角色编码已存在于当前租户: {new_code}")
 
@@ -114,11 +82,7 @@ class TenantRoleComponent(BaseComponent):
         return role
 
     async def get_tenant_roles(
-            self,
-            tenant_id: str,
-            is_enabled: Optional[bool] = None,
-            offset: int = 0,
-            limit: int = 20
+        self, tenant_id: str, is_enabled: Optional[bool] = None, offset: int = 0, limit: int = 20
     ) -> Tuple[List[Role], int]:
         """
         获取租户下的角色列表
@@ -137,11 +101,7 @@ class TenantRoleComponent(BaseComponent):
         roles = await query.offset(offset).limit(limit).order_by("-created_at")
         return list(roles), total
 
-    async def batch_add_roles_to_tenant(
-            self,
-            tenant_id: str,
-            roles_data: List[Dict[str, Any]]
-    ) -> List[Role]:
+    async def batch_add_roles_to_tenant(self, tenant_id: str, roles_data: List[Dict[str, Any]]) -> List[Role]:
         """
         批量添加角色到租户
         :param tenant_id: 租户ID
@@ -156,11 +116,7 @@ class TenantRoleComponent(BaseComponent):
                 created_roles.append(role)
             return created_roles
 
-    async def batch_remove_roles_from_tenant(
-            self,
-            tenant_id: str,
-            role_ids: List[str]
-    ) -> int:
+    async def batch_remove_roles_from_tenant(self, tenant_id: str, role_ids: List[str]) -> int:
         """
         批量从租户中删除角色（软删除）
         :param tenant_id: 租户ID
@@ -175,11 +131,7 @@ class TenantRoleComponent(BaseComponent):
             return deleted_count
 
     async def search_tenant_roles(
-            self,
-            tenant_id: str,
-            keyword: str,
-            offset: int = 0,
-            limit: int = 20
+        self, tenant_id: str, keyword: str, offset: int = 0, limit: int = 20
     ) -> Tuple[List[Role], int]:
         """
         搜索租户下的角色
@@ -195,9 +147,7 @@ class TenantRoleComponent(BaseComponent):
 
         # 构建包含关键词搜索的查询
         query = Role.objects.filter(tenant_id=tenant_id).filter(
-            Q(code__icontains=keyword) |
-            Q(name__icontains=keyword) |
-            Q(description__icontains=keyword)
+            Q(code__icontains=keyword) | Q(name__icontains=keyword) | Q(description__icontains=keyword)
         )
 
         total = await query.count()

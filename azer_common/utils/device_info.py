@@ -36,7 +36,7 @@ class DeviceFingerprintUtil:
 
         # 组合设备信息和随机 ID 生成唯一指纹
         fingerprint_source = f"{dev_info}"
-        buffer = fingerprint_source.encode('utf-8')
+        buffer = fingerprint_source.encode("utf-8")
 
         # 生成 SHA256 哈希值
         return hashlib.sha256(buffer).hexdigest()  # type: ignore

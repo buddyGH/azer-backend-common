@@ -6,83 +6,49 @@ from azer_common.utils.validators import validate_permission_code
 
 class Permission(BaseModel):
     """权限定义表，存储细粒度权限规则"""
+
     # 核心标识字段
     code = fields.CharField(
         max_length=100,
         validators=[validate_permission_code],
-        description='权限编码（租户内唯一，如：user:read、article:delete）'
+        description="权限编码（租户内唯一，如：user:read、article:delete）",
     )
-    name = fields.CharField(
-        max_length=50,
-        description='权限显示名称'
-    )
-    description = fields.CharField(
-        max_length=200,
-        null=True,
-        description='权限详细描述'
-    )
+    name = fields.CharField(max_length=50, description="权限显示名称")
+    description = fields.CharField(max_length=200, null=True, description="权限详细描述")
 
     # 关联字段
     roles = fields.ManyToManyField(
-        'models.Role',
-        through='azer_role_permission',
-        related_name='permissions',
-        description='拥有该权限的角色列表'
+        "models.Role", through="azer_role_permission", related_name="permissions", description="拥有该权限的角色列表"
     )
     tenant = fields.ForeignKeyField(
-        'models.Tenant',
-        related_name='permissions_list',
+        "models.Tenant",
+        related_name="permissions_list",
         null=True,
         on_delete=fields.RESTRICT,
-        description='所属租户（null表示全局权限，所有租户可用）'
+        description="所属租户（null表示全局权限，所有租户可用）",
     )
 
     # 权限分类字段
     category = fields.CharField(
-        max_length=50,
-        default='general',
-        description='权限分类（如：system、user、content、finance）'
+        max_length=50, default="general", description="权限分类（如：system、user、content、finance）"
     )
-    module = fields.CharField(
-        max_length=50,
-        null=True,
-        description='所属业务模块'
-    )
+    module = fields.CharField(max_length=50, null=True, description="所属业务模块")
 
     # 权限规则字段
-    action = fields.CharField(
-        max_length=20,
-        description='操作类型（read/write/delete/manage）'
-    )
-    resource_type = fields.CharField(
-        max_length=50,
-        description='资源类型（如：user、article、order）'
-    )
-    resource_id = fields.CharField(
-        max_length=100,
-        null=True,
-        description='特定资源ID（为空表示所有资源）'
-    )
+    action = fields.CharField(max_length=20, description="操作类型（read/write/delete/manage）")
+    resource_type = fields.CharField(max_length=50, description="资源类型（如：user、article、order）")
+    resource_id = fields.CharField(max_length=100, null=True, description="特定资源ID（为空表示所有资源）")
 
     # 状态控制字段
-    is_enabled = fields.BooleanField(
-        default=True,
-        description='是否启用'
-    )
-    is_system = fields.BooleanField(
-        default=False,
-        description='是否系统内置权限（不可删除，必须为全局权限）'
-    )
+    is_enabled = fields.BooleanField(default=True, description="是否启用")
+    is_system = fields.BooleanField(default=False, description="是否系统内置权限（不可删除，必须为全局权限）")
 
     # 扩展字段
-    metadata = fields.JSONField(
-        null=True,
-        description='权限扩展元数据'
-    )
+    metadata = fields.JSONField(null=True, description="权限扩展元数据")
 
     class Meta:
         table = "azer_permission"
-        table_description = '权限定义表'
+        table_description = "权限定义表"
         indexes = [
             ("category", "module"),
             ("resource_type", "action"),
@@ -118,7 +84,7 @@ class Permission(BaseModel):
             raise ValueError("系统内置权限必须为全局权限（tenant_id需为空）")
 
         # 编码格式校验
-        if not re.match(r'^[a-z_][a-z0-9_:]{0,99}$', self.code):
+        if not re.match(r"^[a-z_][a-z0-9_:]{0,99}$", self.code):
             raise ValueError(
                 "权限编码格式错误：必须以小写字母/下划线开头，仅包含小写字母、数字、下划线、冒号，长度1-100"
             )

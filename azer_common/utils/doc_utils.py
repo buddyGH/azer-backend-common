@@ -34,10 +34,7 @@ def load_docs(module_name, action_name):
         return "", "", {}
 
 
-def export_openapi(
-        app: FastAPI,
-        file_path: str = None
-) -> dict:
+def export_openapi(app: FastAPI, file_path: str = None) -> dict:
     """
     导出 OpenAPI 规范并保存为 JSON 文件。
 

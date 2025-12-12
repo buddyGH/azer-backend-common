@@ -16,7 +16,7 @@ async def hash_user_credential_password(_sender, instance: UserCredential, _usin
         instance.failed_login_attempts = 0
 
         if update_fields is not None:
-            fields_to_add = ['password', 'password_changed_at', 'failed_login_attempts']
+            fields_to_add = ["password", "password_changed_at", "failed_login_attempts"]
             for field in fields_to_add:
                 if field not in update_fields:
                     update_fields.append(field)

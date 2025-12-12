@@ -25,10 +25,7 @@ class RoleBaseComponent(BaseComponent):
         return await self.model.filter(**filters).first()
 
     async def check_code_exists(
-            self,
-            code: str,
-            tenant_id: Optional[str] = None,
-            exclude_id: Optional[str] = None
+        self, code: str, tenant_id: Optional[str] = None, exclude_id: Optional[str] = None
     ) -> bool:
         """
         检查角色编码是否已存在（同一租户内唯一）
@@ -99,15 +96,11 @@ class RoleBaseComponent(BaseComponent):
         async with self.transaction():
             # 软删除角色-权限关联
             await RolePermission.objects.filter(role_id=role_id).update(
-                is_deleted=True,
-                is_granted=False,
-                deleted_at=utc_now()
+                is_deleted=True, is_granted=False, deleted_at=utc_now()
             )
             # 软删除用户-角色关联
             await UserRole.objects.filter(role_id=role_id).update(
-                is_deleted=True,
-                is_assigned=False,
-                deleted_at=utc_now()
+                is_deleted=True, is_assigned=False, deleted_at=utc_now()
             )
             # 软删除角色本身
             await role.soft_delete()
@@ -122,11 +115,11 @@ class RoleBaseComponent(BaseComponent):
         if not tenant_id:
             raise ValueError("租户ID不能为空")
 
-        return await self.model.objects.filter(
-            tenant_id=tenant_id,
-            is_default=True,
-            is_enabled=True
-        ).order_by("level desc").all()
+        return (
+            await self.model.objects.filter(tenant_id=tenant_id, is_default=True, is_enabled=True)
+            .order_by("level desc")
+            .all()
+        )
 
     async def get_system_roles(self, tenant_id: str) -> List[Role]:
         """
@@ -137,18 +130,10 @@ class RoleBaseComponent(BaseComponent):
         if not tenant_id:
             raise ValueError("租户ID不能为空")
 
-        return await self.model.objects.filter(
-            tenant_id=tenant_id,
-            is_system=True
-        ).order_by("level desc").all()
-
+        return await self.model.objects.filter(tenant_id=tenant_id, is_system=True).order_by("level desc").all()
 
     async def get_roles_by_tenant(
-            self,
-            tenant_id: Optional[str] = None,
-            is_enabled: Optional[bool] = None,
-            offset: int = 0,
-            limit: int = 20
+        self, tenant_id: Optional[str] = None, is_enabled: Optional[bool] = None, offset: int = 0, limit: int = 20
     ) -> Tuple[List[Role], int]:
         """
         获取租户下的角色列表（支持全局角色）
@@ -166,20 +151,10 @@ class RoleBaseComponent(BaseComponent):
         if is_enabled is not None:
             filters["is_enabled"] = is_enabled
 
-        return await self.filter(
-            offset=offset,
-            limit=limit,
-            order_by="-created_at",
-            **filters
-        )
+        return await self.filter(offset=offset, limit=limit, order_by="-created_at", **filters)
 
     async def get_roles_by_type(
-            self,
-            role_type: str,
-            tenant_id: str,
-            is_enabled: bool = True,
-            offset: int = 0,
-            limit: int = 20
+        self, role_type: str, tenant_id: str, is_enabled: bool = True, offset: int = 0, limit: int = 20
     ) -> Tuple[List[Role], int]:
         """
         按角色类型获取角色列表
@@ -195,26 +170,12 @@ class RoleBaseComponent(BaseComponent):
         if not tenant_id:
             raise ValueError("租户ID不能为空")
 
-        filters = {
-            "role_type": role_type,
-            "tenant_id": tenant_id,
-            "is_deleted": False,
-            "is_enabled": is_enabled
-        }
+        filters = {"role_type": role_type, "tenant_id": tenant_id, "is_deleted": False, "is_enabled": is_enabled}
 
-        return await self.filter(
-            offset=offset,
-            limit=limit,
-            order_by="level desc, created_at",
-            **filters
-        )
+        return await self.filter(offset=offset, limit=limit, order_by="level desc, created_at", **filters)
 
     async def get_roles_by_level(
-            self,
-            min_level: int,
-            max_level: Optional[int] = None,
-            tenant_id: str = None,
-            is_enabled: bool = True
+        self, min_level: int, max_level: Optional[int] = None, tenant_id: str = None, is_enabled: bool = True
     ) -> List[Role]:
         """
         按角色等级范围获取角色列表
@@ -224,10 +185,7 @@ class RoleBaseComponent(BaseComponent):
         :param is_enabled: 是否仅查询启用的角色
         :return: 角色列表
         """
-        query = self.model.objects.filter(
-            is_enabled=is_enabled,
-            level__gte=min_level
-        )
+        query = self.model.objects.filter(is_enabled=is_enabled, level__gte=min_level)
 
         if max_level is not None:
             query = query.filter(level__lte=max_level)
@@ -238,11 +196,7 @@ class RoleBaseComponent(BaseComponent):
         return await query.order_by("level", "created_at").all()
 
     async def get_children_roles(
-            self,
-            parent_id: str,
-            tenant_id: str,
-            include_self: bool = False,
-            is_enabled: bool = True
+        self, parent_id: str, tenant_id: str, include_self: bool = False, is_enabled: bool = True
     ) -> List[Role]:
         """
         获取角色的子角色列表（用于权限继承）
@@ -258,11 +212,7 @@ class RoleBaseComponent(BaseComponent):
             raise ValueError("租户ID不能为空")
 
         # 获取直接子角色
-        query = self.model.objects.filter(
-            tenant_id=tenant_id,
-            parent_id=parent_id,
-            is_enabled=is_enabled
-        )
+        query = self.model.objects.filter(tenant_id=tenant_id, parent_id=parent_id, is_enabled=is_enabled)
 
         if include_self:
             # 如果需要包含自身，递归获取自身
@@ -275,11 +225,7 @@ class RoleBaseComponent(BaseComponent):
 
         return await query.order_by("level", "created_at").all()
 
-    async def update_role_parent(
-            self,
-            role_id: str,
-            parent_id: Optional[str]
-    ) -> Optional[Role]:
+    async def update_role_parent(self, role_id: str, parent_id: Optional[str]) -> Optional[Role]:
         """
         更新角色的父角色（用于调整继承关系）
         :param role_id: 角色ID
@@ -319,10 +265,7 @@ class RoleBaseComponent(BaseComponent):
         return role
 
     async def get_role_tree(
-            self,
-            tenant_id: str,
-            max_depth: Optional[int] = None,
-            is_enabled: bool = True
+        self, tenant_id: str, max_depth: Optional[int] = None, is_enabled: bool = True
     ) -> List[Role]:
         """
         获取角色树形结构（包含父子关系）
@@ -334,11 +277,7 @@ class RoleBaseComponent(BaseComponent):
         if not tenant_id:
             raise ValueError("租户ID不能为空")
 
-        filters = {
-            "tenant_id": tenant_id,
-            "is_deleted": False,
-            "is_enabled": is_enabled
-        }
+        filters = {"tenant_id": tenant_id, "is_deleted": False, "is_enabled": is_enabled}
 
         # 获取所有符合条件的角色
         roles = await self.model.filter(**filters).order_by("level", "created_at").all()

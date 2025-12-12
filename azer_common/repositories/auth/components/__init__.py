@@ -2,6 +2,4 @@
 
 from .base import AuthBaseComponent
 
-__all__ = [
-    'AuthBaseComponent'
-]
+__all__ = ["AuthBaseComponent"]

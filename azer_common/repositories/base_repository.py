@@ -6,11 +6,12 @@ from tortoise.transactions import in_transaction
 from azer_common.models.base import BaseModel
 from azer_common.utils.time import utc_now
 
-T = TypeVar('T', bound=BaseModel)
+T = TypeVar("T", bound=BaseModel)
 
 
 class IRepository(Generic[T]):
     """Repository 接口定义"""
+
     async def get_by_id(self, id: str) -> Optional[T]:
         raise NotImplementedError
 
@@ -39,31 +40,22 @@ class IRepository(Generic[T]):
         raise NotImplementedError
 
     async def filter(
-            self,
-            offset: int = 0,
-            limit: int = 20,
-            order_by: Union[str, List[str]] = "-created_at",
-            **filters
+        self, offset: int = 0, limit: int = 20, order_by: Union[str, List[str]] = "-created_at", **filters
     ) -> Tuple[List[T], int]:
         raise NotImplementedError
 
-    async def search(
-            self,
-            keyword: str = None,
-            search_fields: List[str] = None,
-            **filters
-    ) -> Tuple[List[T], int]:
+    async def search(self, keyword: str = None, search_fields: List[str] = None, **filters) -> Tuple[List[T], int]:
         raise NotImplementedError
 
 
 class BaseRepository(IRepository[T]):
     def __init__(self, model: Type[T]):
         self.model = model
-        self.soft_delete_field = 'is_deleted'
+        self.soft_delete_field = "is_deleted"
         self.default_search_fields = []
         self.default_order_by = "-created_at"
-        self.auto_update_fields = ['updated_at']
-        self.system_protected_fields = ['id', 'created_at', 'deleted_at', self.soft_delete_field]
+        self.auto_update_fields = ["updated_at"]
+        self.system_protected_fields = ["id", "created_at", "deleted_at", self.soft_delete_field]
 
     async def create(self, **data) -> T:
         """创建单个记录"""
@@ -124,10 +116,7 @@ class BaseRepository(IRepository[T]):
         if not ids or not data:
             return 0
 
-        valid_data = {
-            k: v for k, v in data.items()
-            if k not in self.system_protected_fields
-        }
+        valid_data = {k: v for k, v in data.items() if k not in self.system_protected_fields}
 
         if not valid_data:
             return 0
@@ -148,12 +137,12 @@ class BaseRepository(IRepository[T]):
             raise
 
     async def enhanced_bulk_update(
-            self,
-            ids: List[str],
-            update_data: Dict[str, Any],
-            before_update_callback: Optional[callable] = None,
-            after_update_callback: Optional[callable] = None,
-            **kwargs
+        self,
+        ids: List[str],
+        update_data: Dict[str, Any],
+        before_update_callback: Optional[callable] = None,
+        after_update_callback: Optional[callable] = None,
+        **kwargs,
     ) -> Tuple[int, List[T]]:
         """增强型批量更新（支持前后回调）"""
         async with self.transaction():
@@ -176,7 +165,7 @@ class BaseRepository(IRepository[T]):
         if not instance:
             return False
 
-        if hasattr(instance, 'is_system') and instance.is_system:
+        if hasattr(instance, "is_system") and instance.is_system:
             raise ValueError("系统记录不允许删除")
 
         if soft and hasattr(instance, self.soft_delete_field):
@@ -194,20 +183,17 @@ class BaseRepository(IRepository[T]):
 
         try:
             async with self.transaction():
-                if hasattr(self.model, 'is_system'):
+                if hasattr(self.model, "is_system"):
                     system_count = await self.model.filter(
                         id__in=ids,
                         is_system=True,
-                        **{self.soft_delete_field: False} if hasattr(self.model, self.soft_delete_field) else {}
+                        **{self.soft_delete_field: False} if hasattr(self.model, self.soft_delete_field) else {},
                     ).count()
                     if system_count > 0:
                         raise ValueError("批量删除中包含系统记录")
 
                 if soft and hasattr(self.model, self.soft_delete_field):
-                    update_data = {
-                        self.soft_delete_field: True,
-                        'deleted_at': utc_now()
-                    }
+                    update_data = {self.soft_delete_field: True, "deleted_at": utc_now()}
                     return await self.model.filter(id__in=ids).update(**update_data)
                 else:
                     return await self.model.filter(id__in=ids).delete()
@@ -221,11 +207,7 @@ class BaseRepository(IRepository[T]):
         return await self.model.filter(**filters).exists()
 
     async def filter(
-            self,
-            offset: int = 0,
-            limit: int = 20,
-            order_by: Union[str, List[str]] = None,
-            **filters
+        self, offset: int = 0, limit: int = 20, order_by: Union[str, List[str]] = None, **filters
     ) -> Tuple[List[T], int]:
         """通用过滤查询（分页、排序）"""
         query = self.model.all()
@@ -250,12 +232,7 @@ class BaseRepository(IRepository[T]):
         results = await query.all()
         return list(results), total
 
-    async def search(
-            self,
-            keyword: str = None,
-            search_fields: List[str] = None,
-            **filters
-    ) -> Tuple[List[T], int]:
+    async def search(self, keyword: str = None, search_fields: List[str] = None, **filters) -> Tuple[List[T], int]:
         """通用搜索功能"""
         query = self.model.all()
 

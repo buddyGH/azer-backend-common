@@ -4,9 +4,7 @@ from pydantic_settings import BaseSettings
 
 
 def inject_config_to_env(
-    config_instance: BaseSettings,
-    parent_prefix: str = "",
-    skip_existing: bool = True
+    config_instance: BaseSettings, parent_prefix: str = "", skip_existing: bool = True
 ) -> Dict[str, str]:
     """
     优先级：子类 env_prefix > config_key 生成的前缀 > 父前缀
@@ -22,9 +20,7 @@ def inject_config_to_env(
     """
     # 校验输入：必须是 BaseSettings 实例
     if not isinstance(config_instance, BaseSettings):
-        raise TypeError(
-            f"config_instance 必须是 BaseSettings 实例，当前类型：{type(config_instance)}"
-        )
+        raise TypeError(f"config_instance 必须是 BaseSettings 实例，当前类型：{type(config_instance)}")
 
     # 1. 确定当前层级的前缀（优先级：env_prefix > config_key > 父前缀）
     current_prefix = parent_prefix
@@ -55,9 +51,7 @@ def inject_config_to_env(
             # 生成嵌套前缀（如 TORTOISE_ + MASTER + __ = TORTOISE_MASTER__）
             nested_prefix = f"{current_prefix}{field_name.upper()}{nested_delimiter}"
             nested_injected = inject_config_to_env(
-                config_instance=field_value,
-                parent_prefix=nested_prefix,
-                skip_existing=skip_existing
+                config_instance=field_value, parent_prefix=nested_prefix, skip_existing=skip_existing
             )
             injected_envs.update(nested_injected)
             continue

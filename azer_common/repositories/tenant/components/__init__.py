@@ -4,7 +4,7 @@ from .role import TenantRoleComponent
 from .user import TenantUserComponent
 
 __all__ = [
-    'TenantBaseComponent',
-    'TenantRoleComponent',
-    'TenantUserComponent',
+    "TenantBaseComponent",
+    "TenantRoleComponent",
+    "TenantUserComponent",
 ]

@@ -2,6 +2,4 @@
 
 from .base import PermissionBaseComponent
 
-__all__ = [
-    'PermissionBaseComponent'
-]
+__all__ = ["PermissionBaseComponent"]

@@ -1,11 +1,7 @@
 # azer_common/repositories/tenant/repository.py
 from azer_common.repositories.base_repository import BaseRepository
 from azer_common.models.tenant.model import Tenant
-from .components import (
-    TenantBaseComponent,
-    TenantRoleComponent,
-    TenantUserComponent
-)
+from .components import TenantBaseComponent, TenantRoleComponent, TenantUserComponent
 
 
 class TenantRepository(BaseRepository[Tenant]):
@@ -13,8 +9,8 @@ class TenantRepository(BaseRepository[Tenant]):
 
     def __init__(self):
         super().__init__(Tenant)
-        self.default_search_fields = ['code', 'name', 'contact', 'mobile']
-        self.system_protected_fields = super().system_protected_fields + ['code', 'is_system']
+        self.default_search_fields = ["code", "name", "contact", "mobile"]
+        self.system_protected_fields = super().system_protected_fields + ["code", "is_system"]
         self._base = TenantBaseComponent(self)
         self._role = TenantRoleComponent(self)
         self._user = TenantUserComponent(self)

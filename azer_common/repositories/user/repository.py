@@ -6,7 +6,7 @@ from .components import (
     UserStatusComponent,
     UserTenantComponent,
     UserRoleComponent,
-    UserStatsComponent
+    UserStatsComponent,
 )
 
 
@@ -15,7 +15,7 @@ class UserRepository(BaseRepository[User]):
 
     def __init__(self):
         super().__init__(User)
-        self.default_search_fields = ['username', 'nick_name', 'real_name', 'email', 'mobile']
+        self.default_search_fields = ["username", "nick_name", "real_name", "email", "mobile"]
         self._base = UserBaseComponent(self)
         self._status = UserStatusComponent(self)
         self._tenant = UserTenantComponent(self)

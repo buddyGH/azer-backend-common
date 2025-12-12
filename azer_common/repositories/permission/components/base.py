@@ -8,11 +8,7 @@ from azer_common.utils.time import utc_now
 
 
 class PermissionBaseComponent(BaseComponent):
-    async def get_by_code(
-            self,
-            code: str,
-            tenant_id: Optional[str] = None
-    ) -> Optional[Permission]:
+    async def get_by_code(self, code: str, tenant_id: Optional[str] = None) -> Optional[Permission]:
         """
         根据权限编码和租户ID获取权限
         :param code: 权限编码
@@ -27,10 +23,7 @@ class PermissionBaseComponent(BaseComponent):
         return await self.model.filter(**filters).first()
 
     async def check_code_exists(
-            self,
-            code: str,
-            tenant_id: Optional[str] = None,
-            exclude_id: Optional[str] = None
+        self, code: str, tenant_id: Optional[str] = None, exclude_id: Optional[str] = None
     ) -> bool:
         """
         检查权限编码是否已存在（同一租户内唯一）
@@ -49,11 +42,7 @@ class PermissionBaseComponent(BaseComponent):
         return await query.exists()
 
     async def get_permissions_by_tenant(
-            self,
-            tenant_id: Optional[str] = None,
-            is_enabled: Optional[bool] = None,
-            offset: int = 0,
-            limit: int = 20
+        self, tenant_id: Optional[str] = None, is_enabled: Optional[bool] = None, offset: int = 0, limit: int = 20
     ) -> Tuple[List[Permission], int]:
         """
         获取租户下的权限列表（支持全局权限）
@@ -71,20 +60,10 @@ class PermissionBaseComponent(BaseComponent):
         if is_enabled is not None:
             filters["is_enabled"] = is_enabled
 
-        return await self.filter(
-            offset=offset,
-            limit=limit,
-            order_by="category, module, code",
-            **filters
-        )
+        return await self.filter(offset=offset, limit=limit, order_by="category, module, code", **filters)
 
     async def get_permissions_by_category(
-            self,
-            category: str,
-            tenant_id: Optional[str] = None,
-            is_enabled: bool = True,
-            offset: int = 0,
-            limit: int = 20
+        self, category: str, tenant_id: Optional[str] = None, is_enabled: bool = True, offset: int = 0, limit: int = 20
     ) -> Tuple[List[Permission], int]:
         """
         按分类获取权限列表
@@ -95,30 +74,16 @@ class PermissionBaseComponent(BaseComponent):
         :param limit: 分页大小
         :return: 权限列表和总数量
         """
-        filters = {
-            "category": category,
-            "is_deleted": False,
-            "is_enabled": is_enabled
-        }
+        filters = {"category": category, "is_deleted": False, "is_enabled": is_enabled}
         if tenant_id is not None:
             filters["tenant_id"] = tenant_id
         else:
             filters["tenant_id__isnull"] = True
 
-        return await self.filter(
-            offset=offset,
-            limit=limit,
-            order_by="module, code",
-            **filters
-        )
+        return await self.filter(offset=offset, limit=limit, order_by="module, code", **filters)
 
     async def get_permissions_by_module(
-            self,
-            module: str,
-            tenant_id: Optional[str] = None,
-            is_enabled: bool = True,
-            offset: int = 0,
-            limit: int = 20
+        self, module: str, tenant_id: Optional[str] = None, is_enabled: bool = True, offset: int = 0, limit: int = 20
     ) -> Tuple[List[Permission], int]:
         """
         按模块获取权限列表
@@ -132,28 +97,16 @@ class PermissionBaseComponent(BaseComponent):
         if not module:
             raise ValueError("模块名称不能为空")
 
-        filters = {
-            "module": module,
-            "is_deleted": False,
-            "is_enabled": is_enabled
-        }
+        filters = {"module": module, "is_deleted": False, "is_enabled": is_enabled}
         if tenant_id is not None:
             filters["tenant_id"] = tenant_id
         else:
             filters["tenant_id__isnull"] = True
 
-        return await self.filter(
-            offset=offset,
-            limit=limit,
-            order_by="category, code",
-            **filters
-        )
+        return await self.filter(offset=offset, limit=limit, order_by="category, code", **filters)
 
     async def get_permissions_by_role(
-            self,
-            role_id: str,
-            tenant_id: Optional[str] = None,
-            is_granted: bool = True
+        self, role_id: str, tenant_id: Optional[str] = None, is_granted: bool = True
     ) -> List[Permission]:
         """
         获取角色拥有的权限列表
@@ -162,10 +115,7 @@ class PermissionBaseComponent(BaseComponent):
         :param is_granted: 是否仅查询已授予的权限
         :return: 权限列表
         """
-        query = RolePermission.objects.filter(
-            role_id=role_id,
-            is_granted=is_granted
-        ).select_related("permission")
+        query = RolePermission.objects.filter(role_id=role_id, is_granted=is_granted).select_related("permission")
 
         if tenant_id is not None:
             query = query.filter(tenant_id=tenant_id)
@@ -192,9 +142,7 @@ class PermissionBaseComponent(BaseComponent):
         async with self.transaction():
             # 软删除角色-权限关联
             await RolePermission.objects.filter(permission_id=permission_id).update(
-                is_deleted=True,
-                is_granted=False,
-                deleted_at=utc_now()
+                is_deleted=True, is_granted=False, deleted_at=utc_now()
             )
             # 软删除权限本身
             await permission.soft_delete()
@@ -224,11 +172,7 @@ class PermissionBaseComponent(BaseComponent):
         await permission.disable()
         return permission
 
-    async def count_by_category(
-            self,
-            tenant_id: Optional[str] = None,
-            is_enabled: bool = True
-    ) -> dict:
+    async def count_by_category(self, tenant_id: Optional[str] = None, is_enabled: bool = True) -> dict:
         """
         统计各分类的权限数量
         :param tenant_id: 租户ID（None表示全局权限）
@@ -241,8 +185,11 @@ class PermissionBaseComponent(BaseComponent):
         else:
             filters["tenant_id__isnull"] = True
 
-        result = await self.model.filter(**filters).group_by("category").annotate(
-            count=Count("id")
-        ).values("category", "count")
+        result = (
+            await self.model.filter(**filters)
+            .group_by("category")
+            .annotate(count=Count("id"))
+            .values("category", "count")
+        )
 
         return {item["category"]: item["count"] for item in result}

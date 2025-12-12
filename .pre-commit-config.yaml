@@ -1,0 +1,31 @@
+repos:
+  # 1. 先用black格式化代码
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3
+        exclude: ^migrations/|^tests/fixtures/
+
+#  # 2. 再用ruff做语法/安全检查（自动修复简单问题）
+#  - repo: https://github.com/astral-sh/ruff-pre-commit
+#    rev: v0.14.7
+#    hooks:
+#      - id: ruff
+#        args: [--fix, --exit-non-zero-on-fix]  # 自动修复简单问题，修复后需重新提交
+#
+#  # 3. mypy类型检查（仅检查变更文件）
+#  - repo: https://github.com/pre-commit/mirrors-mypy
+#    rev: v1.10.0
+#    hooks:
+#      - id: mypy
+#        additional_dependencies: [types-all]  # 补充第三方库类型提示
+#        exclude: ^tests/
+#
+#  # 4. bandit安全扫描
+#  - repo: https://github.com/PyCQA/bandit
+#    rev: 1.7.10
+#    hooks:
+#      - id: bandit
+#        args: [-r, app/]
+#        exclude: ^tests/

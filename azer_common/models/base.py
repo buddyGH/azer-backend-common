@@ -21,15 +21,15 @@ class BaseModel(models.Model):
     id = fields.UUIDField(pk=True, field_type="BINARY(16)", default=uuid7)
 
     # 审计字段
-    created_at = fields.DatetimeField(auto_now_add=True, description='创建时间')
-    updated_at = fields.DatetimeField(auto_now=True, description='更新时间')
+    created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
+    updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
 
     # 软删除字段
-    is_deleted = fields.BooleanField(default=False, description='是否删除')
-    deleted_at = fields.DatetimeField(null=True, description='删除时间')
+    is_deleted = fields.BooleanField(default=False, description="是否删除")
+    deleted_at = fields.DatetimeField(null=True, description="删除时间")
 
     # 元数据字段
-    meta = fields.JSONField(null=True, description='元数据', default=dict)
+    meta = fields.JSONField(null=True, description="元数据", default=dict)
 
     # 配置默认管理器（自动过滤软删除）
     objects = SoftDeleteManager()

@@ -8,7 +8,7 @@ from tortoise.exceptions import (
     OperationalError,
     IntegrityError,
     DoesNotExist,
-    ObjectDoesNotExistError
+    ObjectDoesNotExistError,
 )
 
 from azer_common.utils.response import response
@@ -41,11 +41,7 @@ def register_exception_handlers(app: FastAPI):
     @app.exception_handler(ObjectDoesNotExistError)
     async def object_does_not_exist_error_handler(request: Request, exc: ObjectDoesNotExistError):
         """精准处理「主键不存在」的场景（比 DoesNotExist 更具体）"""
-        error_data = response(
-            result={"detail": str(exc)},
-            code=404,
-            message=f"{exc.model.__name__} 记录不存在"
-        )
+        error_data = response(result={"detail": str(exc)}, code=404, message=f"{exc.model.__name__} 记录不存在")
         return JSONResponse(status_code=404, content=error_data)
 
     @app.exception_handler(DoesNotExist)
@@ -61,11 +57,7 @@ def register_exception_handlers(app: FastAPI):
         error_detail = "数据约束失败（如主键重复、唯一索引冲突、外键关联不存在）"
         if cast(bool, app.debug):
             error_detail += f" | 详情：{str(exc)}"
-        error_data = response(
-            result={"detail": error_detail},
-            code=422,
-            message="数据库完整性错误"
-        )
+        error_data = response(result={"detail": error_detail}, code=422, message="数据库完整性错误")
         return JSONResponse(status_code=422, content=error_data)
 
     @app.exception_handler(OperationalError)
@@ -75,11 +67,7 @@ def register_exception_handlers(app: FastAPI):
         # 备选方案：用 getattr 避免警告
         if getattr(app, "debug", False):
             error_detail += f" | 详情：{str(exc)}"
-        error_data = response(
-            result={"detail": error_detail},
-            code=500,
-            message="数据库操作错误"
-        )
+        error_data = response(result={"detail": error_detail}, code=500, message="数据库操作错误")
         return JSONResponse(status_code=500, content=error_data)
 
     @app.exception_handler(BaseORMException)
@@ -88,9 +76,5 @@ def register_exception_handlers(app: FastAPI):
         error_detail = "数据库底层错误"
         if cast(bool, app.debug):
             error_detail += f" | 详情：{str(exc)}"
-        error_data = response(
-            result={"detail": error_detail},
-            code=500,
-            message="数据库错误"
-        )
+        error_data = response(result={"detail": error_detail}, code=500, message="数据库错误")
         return JSONResponse(status_code=500, content=error_data)

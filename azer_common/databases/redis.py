@@ -32,7 +32,7 @@ class RedisClient:
             password=self.config.master.password,
             db=self.config.master.database,
             encoding="utf-8",
-            decode_responses=True
+            decode_responses=True,
         )
 
         self.replica = await aioredis.from_url(  # type: ignore
@@ -41,7 +41,7 @@ class RedisClient:
             password=self.config.replica.password,
             db=self.config.replica.database,
             encoding="utf-8",
-            decode_responses=True
+            decode_responses=True,
         )
 
     async def close(self):
@@ -116,4 +116,3 @@ class RedisClient:
         :return: 返回 True 表示成功，False 表示失败
         """
         return await self.get_master().expire(key, time)
-

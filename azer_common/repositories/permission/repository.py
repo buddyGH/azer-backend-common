@@ -11,11 +11,11 @@ class PermissionRepository(BaseRepository[Permission]):
 
     def __init__(self):
         super().__init__(Permission)
-        self.default_search_fields = ['code', 'name', 'description', 'category', 'module']
+        self.default_search_fields = ["code", "name", "description", "category", "module"]
         self.system_protected_fields = super().system_protected_fields + [
-            'is_system',
-            'code',
-            'tenant_id',
+            "is_system",
+            "code",
+            "tenant_id",
         ]
         self._base = PermissionBaseComponent(self)
 

@@ -5,83 +5,60 @@ from azer_common.models.base import BaseModel
 
 class Role(BaseModel):
     """角色表，多租户场景下的角色定义，支持权限继承"""
+
     # 核心标识字段
     code = fields.CharField(
-        max_length=50,
-        description='角色编码（租户内唯一，大写字母/数字/下划线，以字母/下划线开头）'
+        max_length=50, description="角色编码（租户内唯一，大写字母/数字/下划线，以字母/下划线开头）"
     )
-    name = fields.CharField(
-        max_length=50,
-        description='角色显示名称'
-    )
+    name = fields.CharField(max_length=50, description="角色显示名称")
     role_type = fields.CharField(
-        max_length=50,
-        null=True,
-        description='角色类型（业务自定义分类，如：管理员/运营/普通用户）'
+        max_length=50, null=True, description="角色类型（业务自定义分类，如：管理员/运营/普通用户）"
     )
-    description = fields.CharField(
-        max_length=200,
-        null=True,
-        description='角色详细描述'
-    )
+    description = fields.CharField(max_length=200, null=True, description="角色详细描述")
 
     # 多租户关联字段
     tenant = fields.ForeignKeyField(
-        'models.Tenant',
-        related_name='roles',
+        "models.Tenant",
+        related_name="roles",
         on_delete=fields.RESTRICT,
-        description='所属租户（强关联，非空）',
+        description="所属租户（强关联，非空）",
         index=True,
-        null=False
+        null=False,
     )
 
     # 权限关联字段
     permissions = fields.ManyToManyField(
-        'models.Permission',
-        through='azer_role_permission',
-        related_name='roles',
-        description='角色关联的权限列表',
-        forward_key='role_id',
-        backward_key='permission_id',
+        "models.Permission",
+        through="azer_role_permission",
+        related_name="roles",
+        description="角色关联的权限列表",
+        forward_key="role_id",
+        backward_key="permission_id",
     )
 
     # 系统控制字段
     is_system = fields.BooleanField(
-        default=False,
-        description='是否系统内置角色（不可删除、设置父角色、标记为默认角色）'
+        default=False, description="是否系统内置角色（不可删除、设置父角色、标记为默认角色）"
     )
-    is_default = fields.BooleanField(
-        default=False,
-        description='是否默认角色（新用户自动分配）'
-    )
-    is_enabled = fields.BooleanField(
-        default=True,
-        description='角色是否启用（禁用后关联权限自动失效）'
-    )
+    is_default = fields.BooleanField(default=False, description="是否默认角色（新用户自动分配）")
+    is_enabled = fields.BooleanField(default=True, description="角色是否启用（禁用后关联权限自动失效）")
 
     # 权限继承字段
-    level = fields.IntField(
-        default=0,
-        ge=0,
-        description='角色等级（用于权限继承，数值越高优先级越高）'
-    )
+    level = fields.IntField(default=0, ge=0, description="角色等级（用于权限继承，数值越高优先级越高）")
     parent = fields.ForeignKeyField(
-        'models.Role',
-        related_name='children',
+        "models.Role",
+        related_name="children",
         null=True,
         on_delete=fields.SET_NULL,
-        description='父角色（用于权限继承，需同租户）'
+        description="父角色（用于权限继承，需同租户）",
     )
 
     # 扩展字段
-    metadata = fields.JSONField(
-        null=True,
-        description='角色扩展元数据'
-    )
+    metadata = fields.JSONField(null=True, description="角色扩展元数据")
 
     class Meta:
         table = "azer_role"
-        table_description = '角色表（多租户+权限继承）'
+        table_description = "角色表（多租户+权限继承）"
         ordering = ["level", "code"]
         indexes = [
             ("tenant_id", "parent_id"),
@@ -119,7 +96,7 @@ class Role(BaseModel):
             raise ValueError("角色必须归属具体租户（tenant_id 不能为空）")
 
         # 编码格式校验
-        if not re.match(r'^[A-Z_][A-Z0-9_]{0,49}$', self.code):
+        if not re.match(r"^[A-Z_][A-Z0-9_]{0,49}$", self.code):
             raise ValueError("角色编码格式错误：必须以大写字母/下划线开头，仅包含大写字母、数字、下划线，长度1-50")
 
         # 自引用校验

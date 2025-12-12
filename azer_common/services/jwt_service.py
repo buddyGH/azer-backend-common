@@ -82,7 +82,7 @@ class CommonJWTService:
         if not authorization or not authorization.startswith(self.config.token_prefix):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid or missing authorization header (must start with {self.config.token_prefix})"
+                detail=f"Invalid or missing authorization header (must start with {self.config.token_prefix})",
             )
 
         token = authorization.split(self.config.token_prefix)[1]
@@ -113,4 +113,3 @@ class CommonJWTService:
 
         # 返回用户对象
         return user
-

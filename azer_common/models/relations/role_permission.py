@@ -5,56 +5,41 @@ from azer_common.utils.time import utc_now
 
 class RolePermission(BaseModel):
     """角色权限关联表，管理角色与权限的授予关系"""
+
     # 核心关联字段
     role = fields.ForeignKeyField(
-        'models.Role',
-        related_name='role_permissions',
-        description='关联角色',
-        on_delete=fields.RESTRICT,
-        null=False
+        "models.Role", related_name="role_permissions", description="关联角色", on_delete=fields.RESTRICT, null=False
     )
     permission = fields.ForeignKeyField(
-        'models.Permission',
-        related_name='permission_roles',
-        description='关联权限',
+        "models.Permission",
+        related_name="permission_roles",
+        description="关联权限",
         on_delete=fields.RESTRICT,
-        null=False
+        null=False,
     )
 
     # 多租户字段
     tenant = fields.ForeignKeyField(
-        'models.Tenant',
-        related_name='role_permissions',
-        description='所属租户（兼容全局权限）',
+        "models.Tenant",
+        related_name="role_permissions",
+        description="所属租户（兼容全局权限）",
         on_delete=fields.RESTRICT,
         null=True,
-        index=True
+        index=True,
     )
 
     # 状态控制字段
-    is_granted = fields.BooleanField(
-        default=True,
-        description='是否授予该权限'
-    )
-    effective_from = fields.DatetimeField(
-        null=True,
-        description='权限生效开始时间'
-    )
-    effective_to = fields.DatetimeField(
-        null=True,
-        description='权限生效结束时间'
-    )
-    metadata = fields.JSONField(
-        null=True,
-        description='扩展元数据'
-    )
+    is_granted = fields.BooleanField(default=True, description="是否授予该权限")
+    effective_from = fields.DatetimeField(null=True, description="权限生效开始时间")
+    effective_to = fields.DatetimeField(null=True, description="权限生效结束时间")
+    metadata = fields.JSONField(null=True, description="扩展元数据")
 
     class Meta:
         table = "azer_role_permission"
-        table_description = '角色权限关联表'
+        table_description = "角色权限关联表"
         unique_together = [
             ("role_id", "permission_id", "tenant_id", "is_deleted"),
-            ("role_id", "permission_id", "tenant_id")
+            ("role_id", "permission_id", "tenant_id"),
         ]
         indexes = [
             ("tenant_id", "role_id", "is_granted", "is_deleted"),
@@ -92,7 +77,8 @@ class RolePermission(BaseModel):
         # 自动填充租户ID
         if not self.tenant_id:
             from azer_common.models.role.model import Role
-            role = await Role.objects.filter(id=self.role_id).only('tenant_id').first()
+
+            role = await Role.objects.filter(id=self.role_id).only("tenant_id").first()
             if role:
                 self.tenant_id = role.tenant_id
 

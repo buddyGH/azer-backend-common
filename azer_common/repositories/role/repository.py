@@ -1,10 +1,7 @@
 # azer_common/repositories/role/repository.py
 from azer_common.repositories.base_repository import BaseRepository
 from azer_common.models.role.model import Role
-from .components import (
-    RoleBaseComponent,
-    RolePermissionComponent
-)
+from .components import RoleBaseComponent, RolePermissionComponent
 
 
 class RoleRepository(BaseRepository[Role]):
@@ -12,12 +9,12 @@ class RoleRepository(BaseRepository[Role]):
 
     def __init__(self):
         super().__init__(Role)
-        self.default_search_fields = ['code', 'name', 'description', 'role_type']
+        self.default_search_fields = ["code", "name", "description", "role_type"]
         self.system_protected_fields = super().system_protected_fields + [
-            'is_system',
-            'tenant_id',
-            'code',
-            'parent_id',
+            "is_system",
+            "tenant_id",
+            "code",
+            "parent_id",
         ]
         self._base = RoleBaseComponent(self)
         self._perm = RolePermissionComponent(self)

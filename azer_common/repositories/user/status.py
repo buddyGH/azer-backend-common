@@ -13,14 +13,12 @@ class UserStatusTransitions:
             UserStatusEnum.PENDING,  # 需要审核
             UserStatusEnum.CLOSED,  # 用户放弃注册
         },
-
         UserStatusEnum.PENDING: {
             UserStatusEnum.ACTIVE,  # 审核通过
             UserStatusEnum.FROZEN,  # 审核拒绝（冻结）
             UserStatusEnum.BANNED,  # 审核拒绝（封禁-恶意）
             UserStatusEnum.CLOSED,  # 审核不通过/用户撤销
         },
-
         # ========== 正常流程 ==========
         UserStatusEnum.ACTIVE: {
             UserStatusEnum.FROZEN,  # 风控冻结
@@ -29,26 +27,22 @@ class UserStatusTransitions:
             UserStatusEnum.BANNED,  # 严重违规封禁
             UserStatusEnum.PENDING,  # 重新审核（资料变更）
         },
-
         UserStatusEnum.INACTIVE: {
             UserStatusEnum.ACTIVE,  # 重新激活
             UserStatusEnum.CLOSED,  # 系统自动注销（长期不活跃）
         },
-
         # ========== 异常流程 ==========
         UserStatusEnum.FROZEN: {
             UserStatusEnum.ACTIVE,  # 解冻（调查后无问题）
             UserStatusEnum.BANNED,  # 转为封禁（确认违规）
             UserStatusEnum.PENDING,  # 需要重新审核
         },
-
         # ========== 结束流程 ==========
         UserStatusEnum.BANNED: {
             # 封禁通常是最终状态，但允许特殊情况
             UserStatusEnum.CLOSED,  # 注销封禁账户（清理）
             # 解封：需特殊流程，不在常规转换中
         },
-
         UserStatusEnum.CLOSED: {
             # 注销不可逆，除非特殊恢复流程
             # UserStatusEnum.ACTIVE,  # 特殊恢复（需额外逻辑）

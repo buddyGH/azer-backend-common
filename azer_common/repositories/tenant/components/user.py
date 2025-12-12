@@ -8,12 +8,12 @@ from azer_common.repositories.base_component import BaseComponent
 class TenantUserComponent(BaseComponent):
 
     async def add_user_to_tenant(
-            self,
-            tenant_id: str,
-            user_id: str,
-            is_primary: bool = False,
-            expires_at: Optional[Any] = None,
-            metadata: Optional[Dict[str, Any]] = None
+        self,
+        tenant_id: str,
+        user_id: str,
+        is_primary: bool = False,
+        expires_at: Optional[Any] = None,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> TenantUser:
         """
         添加用户到租户
@@ -36,18 +36,12 @@ class TenantUserComponent(BaseComponent):
 
             # 2. 如果设为主租户，先取消该用户的其他主租户关联
             if is_primary:
-                await TenantUser.objects.filter(
-                    user_id=user_id,
-                    is_primary=True
-                ).update(is_primary=False)
+                await TenantUser.objects.filter(user_id=user_id, is_primary=True).update(is_primary=False)
 
             # 3. 创建或更新租户用户关联
             # 注意：使用 get_or_create 时，默认查询会过滤 is_deleted=False 的记录
             # 但我们要检查所有记录（包括软删除的）
-            existing_relation = await TenantUser.filter(
-                tenant_id=tenant_id,
-                user_id=user_id
-            ).first()
+            existing_relation = await TenantUser.filter(tenant_id=tenant_id, user_id=user_id).first()
 
             if existing_relation:
                 # 如果是软删除的记录，恢复它
@@ -72,7 +66,7 @@ class TenantUserComponent(BaseComponent):
                     is_primary=is_primary,
                     is_assigned=True,
                     expires_at=expires_at,
-                    metadata=metadata or {}
+                    metadata=metadata or {},
                 )
 
     async def remove_user_from_tenant(self, tenant_id: str, user_id: str) -> bool:
@@ -82,10 +76,7 @@ class TenantUserComponent(BaseComponent):
         :param user_id: 用户ID
         :return: 操作成功返回True，否则返回False
         """
-        tenant_user = await TenantUser.objects.filter(
-            tenant_id=tenant_id,
-            user_id=user_id
-        ).first()
+        tenant_user = await TenantUser.objects.filter(tenant_id=tenant_id, user_id=user_id).first()
 
         if not tenant_user:
             return False
@@ -93,12 +84,7 @@ class TenantUserComponent(BaseComponent):
         await tenant_user.soft_delete()
         return True
 
-    async def get_tenant_users(
-            self,
-            tenant_id: str,
-            offset: int = 0,
-            limit: int = 20
-    ) -> Tuple[List[User], int]:
+    async def get_tenant_users(self, tenant_id: str, offset: int = 0, limit: int = 20) -> Tuple[List[User], int]:
         """
         获取租户下的用户列表
         :param tenant_id: 租户ID
@@ -112,16 +98,13 @@ class TenantUserComponent(BaseComponent):
 
         # 2. 通过关联表查询用户
         # 先查询有效的关联记录
-        tenant_users_query = TenantUser.objects.filter(
-            tenant_id=tenant_id,
-            is_assigned=True
-        )
+        tenant_users_query = TenantUser.objects.filter(tenant_id=tenant_id, is_assigned=True)
 
         # 获取关联记录总数
         total = await tenant_users_query.count()
 
         # 获取用户ID列表
-        user_ids = await tenant_users_query.offset(offset).limit(limit).values_list('user_id', flat=True)
+        user_ids = await tenant_users_query.offset(offset).limit(limit).values_list("user_id", flat=True)
 
         if not user_ids:
             return [], total
@@ -132,9 +115,7 @@ class TenantUserComponent(BaseComponent):
         return list(users), total
 
     async def batch_add_users_to_tenant(
-            self,
-            tenant_id: str,
-            user_data_list: List[Dict[str, Any]]
+        self, tenant_id: str, user_data_list: List[Dict[str, Any]]
     ) -> Tuple[int, List[TenantUser]]:
         """
         批量添加用户到租户
@@ -156,7 +137,7 @@ class TenantUserComponent(BaseComponent):
             if not user_ids:
                 return 0, []
 
-            existing_user_ids = await User.objects.filter(id__in=user_ids).values_list('id', flat=True)
+            existing_user_ids = await User.objects.filter(id__in=user_ids).values_list("id", flat=True)
 
             existing_user_set = set(existing_user_ids)
 
@@ -167,15 +148,11 @@ class TenantUserComponent(BaseComponent):
 
             # 3. 预先处理所有需要设为主租户的用户
             primary_user_ids = [
-                data.get("user_id") for data in user_data_list
-                if data.get("user_id") and data.get("is_primary", False)
+                data.get("user_id") for data in user_data_list if data.get("user_id") and data.get("is_primary", False)
             ]
 
             if primary_user_ids:
-                await TenantUser.objects.filter(
-                    user_id__in=primary_user_ids,
-                    is_primary=True
-                ).update(is_primary=False)
+                await TenantUser.objects.filter(user_id__in=primary_user_ids, is_primary=True).update(is_primary=False)
 
             # 4. 批量处理用户关联
             created_relations = []
@@ -188,10 +165,7 @@ class TenantUserComponent(BaseComponent):
                         continue
 
                     # 检查是否已存在关联
-                    existing_relation = await TenantUser.objects.filter(
-                        tenant_id=tenant_id,
-                        user_id=user_id
-                    ).first()
+                    existing_relation = await TenantUser.objects.filter(tenant_id=tenant_id, user_id=user_id).first()
 
                     if existing_relation:
                         # 恢复软删除的记录
@@ -216,7 +190,7 @@ class TenantUserComponent(BaseComponent):
                             is_primary=user_data.get("is_primary", False),
                             is_assigned=True,
                             expires_at=user_data.get("expires_at"),
-                            metadata=user_data.get("metadata", {})
+                            metadata=user_data.get("metadata", {}),
                         )
                         created_relations.append(new_relation)
 
@@ -229,11 +203,7 @@ class TenantUserComponent(BaseComponent):
 
             return success_count, created_relations
 
-    async def batch_remove_users_from_tenant(
-            self,
-            tenant_id: str,
-            user_ids: List[str]
-    ) -> int:
+    async def batch_remove_users_from_tenant(self, tenant_id: str, user_ids: List[str]) -> int:
         """
         批量从租户移除用户
         :param tenant_id: 租户ID
@@ -242,10 +212,7 @@ class TenantUserComponent(BaseComponent):
         """
         async with self.transaction():
             # 查询现有的关联（只处理未软删除的）
-            tenant_users = await TenantUser.objects.filter(
-                tenant_id=tenant_id,
-                user_id__in=user_ids
-            ).all()
+            tenant_users = await TenantUser.objects.filter(tenant_id=tenant_id, user_id__in=user_ids).all()
 
             if not tenant_users:
                 return 0
@@ -268,24 +235,23 @@ class TenantUserComponent(BaseComponent):
         :return: 租户关联信息列表
         """
         # 查询用户的所有租户关联
-        tenant_users = await TenantUser.objects.filter(
-            user_id=user_id,
-            is_assigned=True
-        ).select_related('tenant').all()
+        tenant_users = await TenantUser.objects.filter(user_id=user_id, is_assigned=True).select_related("tenant").all()
 
         result = []
         for tu in tenant_users:
-            result.append({
-                "tenant_id": tu.tenant_id,
-                "tenant_code": tu.tenant.code if tu.tenant else None,
-                "tenant_name": tu.tenant.name if tu.tenant else None,
-                "is_primary": tu.is_primary,
-                "is_assigned": tu.is_assigned,
-                "expires_at": tu.expires_at,
-                "metadata": tu.metadata,
-                "created_at": tu.created_at,
-                "updated_at": tu.updated_at
-            })
+            result.append(
+                {
+                    "tenant_id": tu.tenant_id,
+                    "tenant_code": tu.tenant.code if tu.tenant else None,
+                    "tenant_name": tu.tenant.name if tu.tenant else None,
+                    "is_primary": tu.is_primary,
+                    "is_assigned": tu.is_assigned,
+                    "expires_at": tu.expires_at,
+                    "metadata": tu.metadata,
+                    "created_at": tu.created_at,
+                    "updated_at": tu.updated_at,
+                }
+            )
 
         return result
 
@@ -298,19 +264,15 @@ class TenantUserComponent(BaseComponent):
         """
         async with self.transaction():
             # 1. 检查关联是否存在
-            tenant_user = await TenantUser.objects.filter(
-                tenant_id=tenant_id,
-                user_id=user_id
-            ).first()
+            tenant_user = await TenantUser.objects.filter(tenant_id=tenant_id, user_id=user_id).first()
 
             if not tenant_user:
                 return False
 
             # 2. 取消其他主租户
-            await TenantUser.objects.filter(
-                user_id=user_id,
-                is_primary=True
-            ).exclude(id=tenant_user.id).update(is_primary=False)
+            await TenantUser.objects.filter(user_id=user_id, is_primary=True).exclude(id=tenant_user.id).update(
+                is_primary=False
+            )
 
             # 3. 设置新的主租户
             tenant_user.is_primary = True

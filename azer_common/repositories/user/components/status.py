@@ -11,13 +11,13 @@ from azer_common.utils.time import utc_now
 class UserStatusComponent(BaseComponent):
 
     async def filter_by_status(
-            self,
-            status: UserLifecycleStatus,
-            tenant_id: Optional[str] = None,
-            include_blocked: bool = False,
-            offset: int = 0,
-            limit: int = 20,
-            order_by: str = "-created_at"
+        self,
+        status: UserLifecycleStatus,
+        tenant_id: Optional[str] = None,
+        include_blocked: bool = False,
+        offset: int = 0,
+        limit: int = 20,
+        order_by: str = "-created_at",
     ) -> Tuple[List[User], int]:
         """
         按生命周期状态过滤用户（替代原get_users_by_lifecycle_status）
@@ -44,12 +44,12 @@ class UserStatusComponent(BaseComponent):
         return users, total
 
     async def filter_by_security_status(
-            self,
-            security_status: UserSecurityStatus,
-            tenant_id: Optional[str] = None,
-            offset: int = 0,
-            limit: int = 20,
-            order_by: str = "-created_at"
+        self,
+        security_status: UserSecurityStatus,
+        tenant_id: Optional[str] = None,
+        offset: int = 0,
+        limit: int = 20,
+        order_by: str = "-created_at",
     ) -> Tuple[List[User], int]:
         """
         按安全状态过滤用户（替代原get_users_by_security_status）
@@ -94,9 +94,7 @@ class UserStatusComponent(BaseComponent):
         return False, None
 
     async def check_user_status_transition(
-            self,
-            user_id: str,
-            new_status: UserLifecycleStatus
+        self, user_id: str, new_status: UserLifecycleStatus
     ) -> Tuple[bool, Optional[str]]:
         """
         检查用户是否可以转换到新状态
@@ -124,12 +122,12 @@ class UserStatusComponent(BaseComponent):
     # ========== 状态转换方法（核心业务逻辑） ==========
 
     async def activate_user(
-            self,
-            user_id: str,
-            verified_email: bool = True,
-            verified_mobile: bool = True,
-            reason: Optional[str] = None,
-            operator_id: Optional[str] = None
+        self,
+        user_id: str,
+        verified_email: bool = True,
+        verified_mobile: bool = True,
+        reason: Optional[str] = None,
+        operator_id: Optional[str] = None,
     ) -> Tuple[bool, Optional[User], Optional[str]]:
         """
         激活用户
@@ -146,9 +144,7 @@ class UserStatusComponent(BaseComponent):
                 return False, None, "用户不存在"
 
             # 检查状态转换是否允许
-            if not UserStatusTransitions.can_transition(
-                    user.status, UserLifecycleStatus.ACTIVE
-            ):
+            if not UserStatusTransitions.can_transition(user.status, UserLifecycleStatus.ACTIVE):
                 return False, None, f"不允许从 {user.status.value} 激活"
 
             # 记录旧状态
@@ -171,18 +167,14 @@ class UserStatusComponent(BaseComponent):
                 reason=reason,
                 operator_id=operator_id,
                 verified_email=verified_email,
-                verified_mobile=verified_mobile
+                verified_mobile=verified_mobile,
             )
 
             await user.save()
             return True, user, None
 
     async def freeze_user(
-            self,
-            user_id: str,
-            reason: str,
-            days: Optional[int] = None,
-            operator_id: Optional[str] = None
+        self, user_id: str, reason: str, days: Optional[int] = None, operator_id: Optional[str] = None
     ) -> Tuple[bool, Optional[User], Optional[str]]:
         """
         冻结用户（设置安全状态）
@@ -219,7 +211,7 @@ class UserStatusComponent(BaseComponent):
                 new_security_status=UserSecurityStatus.FROZEN,
                 reason=reason,
                 operator_id=operator_id,
-                days=days
+                days=days,
             )
 
             # 设置预期解冻时间
@@ -233,10 +225,7 @@ class UserStatusComponent(BaseComponent):
             return True, user, None
 
     async def unfreeze_user(
-            self,
-            user_id: str,
-            reason: str,
-            operator_id: Optional[str] = None
+        self, user_id: str, reason: str, operator_id: Optional[str] = None
     ) -> Tuple[bool, Optional[User], Optional[str]]:
         """
         解冻用户
@@ -266,7 +255,7 @@ class UserStatusComponent(BaseComponent):
                 old_security_status=old_security_status,
                 new_security_status=None,
                 reason=reason,
-                operator_id=operator_id
+                operator_id=operator_id,
             )
 
             # 清除预期解冻时间
@@ -277,11 +266,7 @@ class UserStatusComponent(BaseComponent):
             return True, user, None
 
     async def ban_user(
-            self,
-            user_id: str,
-            reason: str,
-            permanent: bool = True,
-            operator_id: Optional[str] = None
+        self, user_id: str, reason: str, permanent: bool = True, operator_id: Optional[str] = None
     ) -> Tuple[bool, Optional[User], Optional[str]]:
         """
         封禁用户
@@ -297,9 +282,7 @@ class UserStatusComponent(BaseComponent):
                 return False, None, "用户不存在"
 
             # 检查状态转换是否允许
-            if not UserStatusTransitions.can_transition(
-                    user.status, UserLifecycleStatus.ACTIVE
-            ):
+            if not UserStatusTransitions.can_transition(user.status, UserLifecycleStatus.ACTIVE):
                 return False, None, f"不允许从 {user.status.value} 封禁"
 
             # 记录旧安全状态
@@ -316,17 +299,14 @@ class UserStatusComponent(BaseComponent):
                 new_security_status=UserSecurityStatus.BANNED,
                 reason=reason,
                 operator_id=operator_id,
-                permanent=permanent
+                permanent=permanent,
             )
 
             await user.save()
             return True, user, None
 
     async def close_user_account(
-            self,
-            user_id: str,
-            reason: str = "user_request",
-            operator_id: Optional[str] = None
+        self, user_id: str, reason: str = "user_request", operator_id: Optional[str] = None
     ) -> Tuple[bool, Optional[User], Optional[str]]:
         """
         注销用户账户
@@ -341,9 +321,7 @@ class UserStatusComponent(BaseComponent):
                 return False, None, "用户不存在"
 
             # 检查状态转换是否允许
-            if not UserStatusTransitions.can_transition(
-                    user.status, UserLifecycleStatus.CLOSED
-            ):
+            if not UserStatusTransitions.can_transition(user.status, UserLifecycleStatus.CLOSED):
                 return False, None, f"不允许从 {user.status.value} 注销"
 
             # 记录旧状态
@@ -360,17 +338,14 @@ class UserStatusComponent(BaseComponent):
                 old_status=old_status,
                 new_status=UserLifecycleStatus.CLOSED,
                 reason=reason,
-                operator_id=operator_id
+                operator_id=operator_id,
             )
 
             await user.save()
             return True, user, None
 
     async def mark_user_inactive(
-            self,
-            user_id: str,
-            reason: str = "inactivity",
-            operator_id: Optional[str] = None
+        self, user_id: str, reason: str = "inactivity", operator_id: Optional[str] = None
     ) -> Tuple[bool, Optional[User], Optional[str]]:
         """
         标记用户为不活跃（自动或手动）
@@ -385,9 +360,7 @@ class UserStatusComponent(BaseComponent):
                 return False, None, "用户不存在"
 
             # 检查状态转换是否允许
-            if not UserStatusTransitions.can_transition(
-                    user.status, UserLifecycleStatus.INACTIVE
-            ):
+            if not UserStatusTransitions.can_transition(user.status, UserLifecycleStatus.INACTIVE):
                 return False, None, f"不允许从 {user.status.value} 标记为不活跃"
 
             # 记录旧状态
@@ -402,17 +375,13 @@ class UserStatusComponent(BaseComponent):
                 old_status=old_status,
                 new_status=UserLifecycleStatus.INACTIVE,
                 reason=reason,
-                operator_id=operator_id
+                operator_id=operator_id,
             )
 
             await user.save()
             return True, user, None
 
-    async def update_user_last_active(
-            self,
-            user_id: str,
-            force_reactive: bool = True
-    ) -> bool:
+    async def update_user_last_active(self, user_id: str, force_reactive: bool = True) -> bool:
         """
         更新用户最后活跃时间（登录/操作时调用）
         :param user_id: 用户ID
@@ -426,9 +395,7 @@ class UserStatusComponent(BaseComponent):
 
             # 如果用户处于INACTIVE状态且force_reactive为True，尝试重新激活
             if force_reactive and user.status == UserLifecycleStatus.INACTIVE:
-                if UserStatusTransitions.can_transition(
-                        user.status, UserLifecycleStatus.ACTIVE
-                ):
+                if UserStatusTransitions.can_transition(user.status, UserLifecycleStatus.ACTIVE):
                     user.status = UserLifecycleStatus.ACTIVE
 
             # 更新最后活跃时间
@@ -438,11 +405,7 @@ class UserStatusComponent(BaseComponent):
             return True
 
     async def review_user_application(
-            self,
-            user_id: str,
-            approved: bool,
-            reason: Optional[str] = None,
-            operator_id: Optional[str] = None
+        self, user_id: str, approved: bool, reason: Optional[str] = None, operator_id: Optional[str] = None
     ) -> Tuple[bool, Optional[User], Optional[str]]:
         """
         审核用户申请（从PENDING状态）
@@ -483,7 +446,7 @@ class UserStatusComponent(BaseComponent):
                 new_status=new_status,
                 reason=reason,
                 operator_id=operator_id,
-                approved=approved
+                approved=approved,
             )
 
             await user.save()
@@ -492,10 +455,7 @@ class UserStatusComponent(BaseComponent):
     # ========== 批量状态操作 ==========
 
     async def batch_mark_inactive(
-            self,
-            user_ids: List[str],
-            reason: str = "batch_inactivity",
-            operator_id: Optional[str] = None
+        self, user_ids: List[str], reason: str = "batch_inactivity", operator_id: Optional[str] = None
     ) -> Tuple[int, List[str]]:
         """
         批量标记为不活跃
@@ -513,9 +473,7 @@ class UserStatusComponent(BaseComponent):
         for user_id in user_ids:
             try:
                 success, _, error = await self.mark_user_inactive(
-                    user_id=user_id,
-                    reason=reason,
-                    operator_id=operator_id
+                    user_id=user_id, reason=reason, operator_id=operator_id
                 )
                 if success:
                     success_count += 1
@@ -527,11 +485,7 @@ class UserStatusComponent(BaseComponent):
         return success_count, failed_ids
 
     async def batch_freeze_users(
-            self,
-            user_ids: List[str],
-            reason: str,
-            days: Optional[int] = None,
-            operator_id: Optional[str] = None
+        self, user_ids: List[str], reason: str, days: Optional[int] = None, operator_id: Optional[str] = None
     ) -> Tuple[int, List[str]]:
         """
         批量冻结用户
@@ -550,10 +504,7 @@ class UserStatusComponent(BaseComponent):
         for user_id in user_ids:
             try:
                 success, _, error = await self.freeze_user(
-                    user_id=user_id,
-                    reason=reason,
-                    days=days,
-                    operator_id=operator_id
+                    user_id=user_id, reason=reason, days=days, operator_id=operator_id
                 )
                 if success:
                     success_count += 1
@@ -564,11 +515,7 @@ class UserStatusComponent(BaseComponent):
 
         return success_count, failed_ids
 
-    async def get_user_status_history(
-            self,
-            user_id: str,
-            limit: int = 50
-    ) -> List[Dict[str, Any]]:
+    async def get_user_status_history(self, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """
         获取用户状态变更历史
         :param user_id: 用户ID
@@ -596,13 +543,13 @@ class UserStatusComponent(BaseComponent):
     # ========== 内部辅助方法 ==========
 
     async def _record_status_change(
-            self,
-            user: User,
-            old_status: UserLifecycleStatus,
-            new_status: UserLifecycleStatus,
-            reason: Optional[str] = None,
-            operator_id: Optional[str] = None,
-            **extra_info
+        self,
+        user: User,
+        old_status: UserLifecycleStatus,
+        new_status: UserLifecycleStatus,
+        reason: Optional[str] = None,
+        operator_id: Optional[str] = None,
+        **extra_info,
     ) -> None:
         """记录生命周期状态变更"""
         if not user.metadata:
@@ -617,7 +564,7 @@ class UserStatusComponent(BaseComponent):
             "new_status": new_status.value,
             "reason": reason,
             "operator_id": operator_id,
-            **extra_info
+            **extra_info,
         }
 
         user.metadata["status_changes"].append(change_record)
@@ -627,13 +574,13 @@ class UserStatusComponent(BaseComponent):
             user.metadata["status_changes"] = user.metadata["status_changes"][-50:]
 
     async def _record_security_status_change(
-            self,
-            user: User,
-            old_security_status: Optional[UserSecurityStatus],
-            new_security_status: Optional[UserSecurityStatus],
-            reason: Optional[str] = None,
-            operator_id: Optional[str] = None,
-            **extra_info
+        self,
+        user: User,
+        old_security_status: Optional[UserSecurityStatus],
+        new_security_status: Optional[UserSecurityStatus],
+        reason: Optional[str] = None,
+        operator_id: Optional[str] = None,
+        **extra_info,
     ) -> None:
         """记录安全状态变更"""
         if not user.metadata:
@@ -648,7 +595,7 @@ class UserStatusComponent(BaseComponent):
             "new_status": new_security_status.value if new_security_status else None,
             "reason": reason,
             "operator_id": operator_id,
-            **extra_info
+            **extra_info,
         }
 
         user.metadata["security_status_changes"].append(change_record)

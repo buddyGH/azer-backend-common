@@ -11,12 +11,12 @@ from azer_common.utils.time import utc_now
 class RolePermissionComponent(BaseComponent):
 
     async def get_role_permissions(
-            self,
-            role_id: str,
-            include_inherited: bool = False,
-            only_enabled: bool = True,
-            only_granted: bool = True,
-            include_expired: bool = False
+        self,
+        role_id: str,
+        include_inherited: bool = False,
+        only_enabled: bool = True,
+        only_granted: bool = True,
+        include_expired: bool = False,
     ) -> List[Permission]:
         """
         获取角色的权限列表（支持继承查询）
@@ -38,10 +38,7 @@ class RolePermissionComponent(BaseComponent):
 
         # 直接权限
         direct_permissions = await self._get_direct_role_permissions(
-            role_id=role_id,
-            only_enabled=only_enabled,
-            only_granted=only_granted,
-            include_expired=include_expired
+            role_id=role_id, only_enabled=only_enabled, only_granted=only_granted, include_expired=include_expired
         )
 
         if not include_inherited:
@@ -49,10 +46,7 @@ class RolePermissionComponent(BaseComponent):
 
         # 获取继承的权限
         inherited_permissions = await self._get_inherited_permissions(
-            role=role,
-            only_enabled=only_enabled,
-            only_granted=only_granted,
-            include_expired=include_expired
+            role=role, only_enabled=only_enabled, only_granted=only_granted, include_expired=include_expired
         )
 
         # 合并权限，去重（继承的优先级更高）
@@ -65,12 +59,12 @@ class RolePermissionComponent(BaseComponent):
     # ========== 角色权限管理方法 ==========
 
     async def grant_permission_to_role(
-            self,
-            role_id: str,
-            permission_id: str,
-            effective_from: Optional[str] = None,
-            effective_to: Optional[str] = None,
-            metadata: Optional[dict] = None
+        self,
+        role_id: str,
+        permission_id: str,
+        effective_from: Optional[str] = None,
+        effective_to: Optional[str] = None,
+        metadata: Optional[dict] = None,
     ) -> RolePermission:
         """
         为角色授予单个权限
@@ -122,18 +116,18 @@ class RolePermissionComponent(BaseComponent):
                     is_granted=True,
                     effective_from=effective_from,
                     effective_to=effective_to,
-                    metadata=metadata
+                    metadata=metadata,
                 )
                 await role_permission.save()
                 return role_permission
 
     async def batch_grant_permissions_to_role(
-            self,
-            role_id: str,
-            permission_ids: List[str],
-            effective_from: Optional[str] = None,
-            effective_to: Optional[str] = None,
-            metadata: Optional[dict] = None
+        self,
+        role_id: str,
+        permission_ids: List[str],
+        effective_from: Optional[str] = None,
+        effective_to: Optional[str] = None,
+        metadata: Optional[dict] = None,
     ) -> List[RolePermission]:
         """
         为角色批量授予权限
@@ -162,7 +156,7 @@ class RolePermissionComponent(BaseComponent):
                         permission_id=permission_id,
                         effective_from=effective_from,
                         effective_to=effective_to,
-                        metadata=metadata
+                        metadata=metadata,
                     )
                     results.append(role_permission)
                 except ValueError as e:
@@ -172,12 +166,7 @@ class RolePermissionComponent(BaseComponent):
 
         return results
 
-    async def revoke_permission_from_role(
-            self,
-            role_id: str,
-            permission_id: str,
-            soft_delete: bool = True
-    ) -> bool:
+    async def revoke_permission_from_role(self, role_id: str, permission_id: str, soft_delete: bool = True) -> bool:
         """
         从角色撤销单个权限
         :param role_id: 角色ID
@@ -190,10 +179,7 @@ class RolePermissionComponent(BaseComponent):
 
         async with self.transaction:
             # 查找关联
-            role_permission = await RolePermission.objects.filter(
-                role_id=role_id,
-                permission_id=permission_id
-            ).first()
+            role_permission = await RolePermission.objects.filter(role_id=role_id, permission_id=permission_id).first()
 
             if not role_permission:
                 return False
@@ -210,10 +196,7 @@ class RolePermissionComponent(BaseComponent):
             return True
 
     async def batch_revoke_permissions_from_role(
-            self,
-            role_id: str,
-            permission_ids: List[str],
-            soft_delete: bool = True
+        self, role_id: str, permission_ids: List[str], soft_delete: bool = True
     ) -> int:
         """
         从角色批量撤销权限
@@ -233,28 +216,21 @@ class RolePermissionComponent(BaseComponent):
                 result = await RolePermission.objects.filter(
                     role_id=role_id,
                     permission_id__in=permission_ids,
-                ).update(
-                    is_granted=False,
-                    is_deleted=True,
-                    deleted_at=utc_now()
-                )
+                ).update(is_granted=False, is_deleted=True, deleted_at=utc_now())
             else:
                 # 批量物理删除
-                result = await RolePermission.filter(
-                    role_id=role_id,
-                    permission_id__in=permission_ids
-                ).delete()
+                result = await RolePermission.filter(role_id=role_id, permission_id__in=permission_ids).delete()
 
         return result if isinstance(result, int) else 0
 
     async def update_role_permission(
-            self,
-            role_id: str,
-            permission_id: str,
-            is_granted: Optional[bool] = None,
-            effective_from: Optional[str] = None,
-            effective_to: Optional[str] = None,
-            metadata: Optional[dict] = None
+        self,
+        role_id: str,
+        permission_id: str,
+        is_granted: Optional[bool] = None,
+        effective_from: Optional[str] = None,
+        effective_to: Optional[str] = None,
+        metadata: Optional[dict] = None,
     ) -> Optional[RolePermission]:
         """
         更新角色权限关联信息
@@ -270,10 +246,7 @@ class RolePermissionComponent(BaseComponent):
             raise ValueError("角色ID和权限ID不能为空")
 
         async with self.transaction:
-            role_permission = await RolePermission.objects.filter(
-                role_id=role_id,
-                permission_id=permission_id
-            ).first()
+            role_permission = await RolePermission.objects.filter(role_id=role_id, permission_id=permission_id).first()
 
             if not role_permission:
                 return None
@@ -292,16 +265,10 @@ class RolePermissionComponent(BaseComponent):
             return role_permission
 
     async def _get_direct_role_permissions(
-            self,
-            role_id: str,
-            only_enabled: bool = True,
-            only_granted: bool = True,
-            include_expired: bool = False
+        self, role_id: str, only_enabled: bool = True, only_granted: bool = True, include_expired: bool = False
     ) -> List[Permission]:
         """获取角色直接关联的权限"""
-        query = RolePermission.objects.filter(
-            role_id=role_id
-        ).select_related("permission")
+        query = RolePermission.objects.filter(role_id=role_id).select_related("permission")
 
         if only_granted:
             query = query.filter(is_granted=True)
@@ -309,10 +276,7 @@ class RolePermissionComponent(BaseComponent):
         if not include_expired:
             # 过滤已过期的权限
             now = utc_now()
-            query = query.filter(
-                Q(effective_to__isnull=True)
-                | Q(effective_to__gte=now)
-            )
+            query = query.filter(Q(effective_to__isnull=True) | Q(effective_to__gte=now))
 
             role_permissions = await query.all()
 
@@ -326,12 +290,12 @@ class RolePermissionComponent(BaseComponent):
         return None
 
     async def _get_inherited_permissions(
-            self,
-            role: Role,
-            only_enabled: bool = True,
-            only_granted: bool = True,
-            include_expired: bool = False,
-            visited: Optional[set] = None
+        self,
+        role: Role,
+        only_enabled: bool = True,
+        only_granted: bool = True,
+        include_expired: bool = False,
+        visited: Optional[set] = None,
     ) -> List[Permission]:
         """递归获取继承的权限（防止循环引用）"""
         if visited is None:
@@ -348,8 +312,7 @@ class RolePermissionComponent(BaseComponent):
 
         # 获取父角色权限
         parent_role = await self.model.objects.filter(
-            id=role.parent_id,
-            is_enabled=True  # 父角色必须启用才能继承
+            id=role.parent_id, is_enabled=True  # 父角色必须启用才能继承
         ).first()
 
         if not parent_role:
@@ -360,7 +323,7 @@ class RolePermissionComponent(BaseComponent):
             role_id=parent_role.id,
             only_enabled=only_enabled,
             only_granted=only_granted,
-            include_expired=include_expired
+            include_expired=include_expired,
         )
 
         # 递归获取父角色继承的权限
@@ -369,7 +332,7 @@ class RolePermissionComponent(BaseComponent):
             only_enabled=only_enabled,
             only_granted=only_granted,
             include_expired=include_expired,
-            visited=visited
+            visited=visited,
         )
 
         # 合并父角色的权限
@@ -385,11 +348,11 @@ class RolePermissionComponent(BaseComponent):
             return all_parent_permissions
 
     async def sync_role_permissions(
-            self,
-            role_id: str,
-            permission_ids: List[str],
-            effective_from: Optional[str] = None,
-            effective_to: Optional[str] = None
+        self,
+        role_id: str,
+        permission_ids: List[str],
+        effective_from: Optional[str] = None,
+        effective_to: Optional[str] = None,
     ) -> Tuple[List[str], List[str], List[str]]:
         """
         同步角色的权限列表（全量更新）
@@ -403,10 +366,7 @@ class RolePermissionComponent(BaseComponent):
             raise ValueError("角色ID不能为空")
 
         # 获取现有权限
-        existing_permissions = await RolePermission.objects.filter(
-            role_id=role_id,
-            is_granted=True
-        ).all()
+        existing_permissions = await RolePermission.objects.filter(role_id=role_id, is_granted=True).all()
 
         existing_ids = {rp.permission_id for rp in existing_permissions}
         new_ids = set(permission_ids)
@@ -419,13 +379,8 @@ class RolePermissionComponent(BaseComponent):
         async with self.transaction:
             # 删除不再需要的权限
             if to_remove:
-                await RolePermission.filter(
-                    role_id=role_id,
-                    permission_id__in=list(to_remove)
-                ).update(
-                    is_granted=False,
-                    is_deleted=True,
-                    deleted_at=utc_now()
+                await RolePermission.filter(role_id=role_id, permission_id__in=list(to_remove)).update(
+                    is_granted=False, is_deleted=True, deleted_at=utc_now()
                 )
 
             # 添加新权限
@@ -436,7 +391,7 @@ class RolePermissionComponent(BaseComponent):
                         role_id=role_id,
                         permission_id=permission_id,
                         effective_from=effective_from,
-                        effective_to=effective_to
+                        effective_to=effective_to,
                     )
                     added_ids.append(permission_id)
                 except Exception as e:
@@ -455,10 +410,7 @@ class RolePermissionComponent(BaseComponent):
         return list(to_add), list(to_remove), list(to_keep)
 
     async def check_role_has_permission(
-            self,
-            role_id: str,
-            permission_code: str,
-            include_inherited: bool = True
+        self, role_id: str, permission_code: str, include_inherited: bool = True
     ) -> bool:
         """
         检查角色是否拥有指定权限（支持继承检查）
@@ -476,7 +428,7 @@ class RolePermissionComponent(BaseComponent):
             include_inherited=include_inherited,
             only_enabled=True,
             only_granted=True,
-            include_expired=False
+            include_expired=False,
         )
 
         # 检查是否包含指定权限

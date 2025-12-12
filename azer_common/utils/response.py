@@ -9,7 +9,7 @@ class StandardResponse(BaseModel):
     message: str
 
 
-def response(result: Any = '', code: int = 200, message: str = "Success") -> dict:
+def response(result: Any = "", code: int = 200, message: str = "Success") -> dict:
     """
     封装标准响应数据
     :param result: 实际返回的数据
@@ -21,5 +21,5 @@ def response(result: Any = '', code: int = 200, message: str = "Success") -> dic
 
 
 def to_camel(string: str) -> str:
-    components = string.split('_')
-    return components[0] + ''.join(x.title() for x in components[1:])
+    components = string.split("_")
+    return components[0] + "".join(x.title() for x in components[1:])

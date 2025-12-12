@@ -23,6 +23,7 @@ def get_microservice_default_log_path(log_type: str) -> str:
     # __main__ 是微服务的启动文件，其所在目录即为微服务根目录
     try:
         import __main__
+
         microservice_root = os.path.dirname(os.path.abspath(__main__.__file__))
     except (ImportError, AttributeError):
         # 兜底：无__main__时，用当前工作目录
@@ -41,17 +42,13 @@ def get_microservice_default_log_path(log_type: str) -> str:
             pass  # 测试写入权限
     except (PermissionError, OSError):
         default_log_path = os.path.join(
-            tempfile.gettempdir(),  # 系统临时目录（如Linux:/tmp，Windows:%TEMP%）
-            f"azer_{log_type}.log"
+            tempfile.gettempdir(), f"azer_{log_type}.log"  # 系统临时目录（如Linux:/tmp，Windows:%TEMP%）
         )
 
     return default_log_path
 
 
-def get_effective_log_path(
-        config_path: Optional[str],
-        log_type: str
-) -> str:
+def get_effective_log_path(config_path: Optional[str], log_type: str) -> str:
     """
     获取最终生效的日志路径（优先级：微服务显式配置 > 微服务默认路径 > 系统临时目录）
     :param config_path: 微服务配置的路径（None则用默认）
@@ -65,9 +62,7 @@ def get_effective_log_path(
 
 # 公共日志配置函数
 def setup_logger(
-        log_name: str,
-        log_config: LoggingConfig,  # 注入通用配置（核心解耦点）
-        log_file_path: Optional[str] = None
+    log_name: str, log_config: LoggingConfig, log_file_path: Optional[str] = None  # 注入通用配置（核心解耦点）
 ) -> logging.Logger:
     """
     设置日志记录器，动态决定日志输出到文件或标准输出
@@ -88,14 +83,14 @@ def setup_logger(
         os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
         log_handler = TimedRotatingFileHandler(
             log_file_path,
-            when='midnight',
+            when="midnight",
             interval=log_config.interval,
             backupCount=log_config.backup_count,
-            encoding='utf-8'
+            encoding="utf-8",
         )
     else:
         log_handler = logging.StreamHandler()
-        log_handler.stream.reconfigure(encoding='utf-8')
+        log_handler.stream.reconfigure(encoding="utf-8")
 
     log_handler.setFormatter(log_formatter)
 
@@ -122,15 +117,9 @@ def create_service_logger(log_config: LoggingConfig) -> logging.Logger:
     # 友好提示：使用默认路径时告知用户
     if not log_config.service_path:
         temp_logger = logging.getLogger("default_logger_hint")
-        temp_logger.warning(
-            f"未配置service_logger路径，自动使用微服务侧默认路径：{log_file_path}\n"
-        )
+        temp_logger.warning(f"未配置service_logger路径，自动使用微服务侧默认路径：{log_file_path}\n")
 
-    return setup_logger(
-        log_name="service_logger",
-        log_config=log_config,
-        log_file_path=log_config.service_path
-    )
+    return setup_logger(log_name="service_logger", log_config=log_config, log_file_path=log_config.service_path)
 
 
 def create_task_logger(log_config: LoggingConfig) -> logging.Logger:
@@ -139,15 +128,9 @@ def create_task_logger(log_config: LoggingConfig) -> logging.Logger:
 
     if not log_config.task_path:
         temp_logger = logging.getLogger("default_logger_hint")
-        temp_logger.warning(
-            f"未配置task_logger路径，自动使用微服务侧默认路径：{log_file_path}\n"
-        )
+        temp_logger.warning(f"未配置task_logger路径，自动使用微服务侧默认路径：{log_file_path}\n")
 
-    return setup_logger(
-        log_name="task_logger",
-        log_config=log_config,
-        log_file_path=log_config.task_path
-    )
+    return setup_logger(log_name="task_logger", log_config=log_config, log_file_path=log_config.task_path)
 
 
 # HTTP请求日志中间件
@@ -201,18 +184,13 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         return filtered
 
     @classmethod
-    def filter_sensitive_data(
-            cls,
-            data: Union[dict, list],
-            sensitive_fields: List[str]
-    ) -> Union[dict, list]:
+    def filter_sensitive_data(cls, data: Union[dict, list], sensitive_fields: List[str]) -> Union[dict, list]:
         """
         类型安全的敏感数据过滤方法
         """
         if isinstance(data, dict):
             return {
-                key: "***" if key.lower() in sensitive_fields
-                else cls.filter_sensitive_data(value, sensitive_fields)
+                key: "***" if key.lower() in sensitive_fields else cls.filter_sensitive_data(value, sensitive_fields)
                 for key, value in data.items()
             }
         elif isinstance(data, list):
@@ -228,20 +206,13 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             # JSON 数据处理
             if "application/json" in content_type:
                 json_body = json.loads(raw_body.decode(encoding="utf-8", errors="replace"))
-                filtered = self.filter_sensitive_data(
-                    json_body,
-                    self.log_config.sensitive_fields
-                )
+                filtered = self.filter_sensitive_data(json_body, self.log_config.sensitive_fields)
                 return json.dumps(filtered, ensure_ascii=False)
 
             # 表单数据处理
             elif "application/x-www-form-urlencoded" in content_type:
                 form_data = parse_qs(raw_body.decode(encoding="utf-8", errors="replace"))
-                filtered = {
-                    k: ["***"] if k in self.log_config.sensitive_fields
-                    else v
-                    for k, v in form_data.items()
-                }
+                filtered = {k: ["***"] if k in self.log_config.sensitive_fields else v for k, v in form_data.items()}
                 return str(filtered)
 
             # 其他文本类型
@@ -278,11 +249,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                 return True
         return False
 
-    async def dispatch(
-            self,
-            request: Request,
-            call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """处理请求日志记录"""
         start_time = time.time()
         path = request.url.path
@@ -308,18 +275,13 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         process_time = time.time() - start_time
 
         self.service_logger.info(
-            f"Response: {response.status_code} | "
-            f"Time: {process_time:.2f}s | "
-            f"Headers: {dict(response.headers)}"
+            f"Response: {response.status_code} | " f"Time: {process_time:.2f}s | " f"Headers: {dict(response.headers)}"
         )
         return response
 
 
 # 动态记录任务日志的函数
-def log_task_message(
-        message: str,
-        logger: Optional[logging.Logger] = None,
-        log_config: Optional[LoggingConfig] = None):
+def log_task_message(message: str, logger: Optional[logging.Logger] = None, log_config: Optional[LoggingConfig] = None):
     """
     记录任务日志信息，包括任务函数名和执行时间
 
@@ -358,9 +320,7 @@ def log_task_message(
     current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
     # 组合详细日志信息，包括任务执行的时间和函数名
-    detailed_message = (
-        f"[{current_time}] {message} | Task Function: {function_name}"
-    )
+    detailed_message = f"[{current_time}] {message} | Task Function: {function_name}"
 
     # 将详细日志信息记录到日志文件
     target_logger.info(detailed_message)

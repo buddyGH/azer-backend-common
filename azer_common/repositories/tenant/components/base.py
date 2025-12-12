@@ -15,7 +15,7 @@ class TenantBaseComponent(BaseComponent):
         :param code: 租户编码
         :return: 租户实例或None
         """
-        return await self.get_by_field('code', code)
+        return await self.get_by_field("code", code)
 
     async def check_code_exists(self, code: str, exclude_id: Optional[str] = None) -> bool:
         """
@@ -24,7 +24,7 @@ class TenantBaseComponent(BaseComponent):
         :param exclude_id: 排除的租户ID（用于更新场景）
         :return: 存在返回True，否则返回False
         """
-        query = await self.get_by_field('code', code)
+        query = await self.get_by_field("code", code)
         if exclude_id:
             query = query.exclude(id=exclude_id)
         return await query.exists()
@@ -38,17 +38,10 @@ class TenantBaseComponent(BaseComponent):
         :return: 存在有效关联返回True
         """
 
-        query = TenantUser.objects.filter(
-            user_id=user_id,
-            tenant_id=tenant_id
-        )
+        query = TenantUser.objects.filter(user_id=user_id, tenant_id=tenant_id)
 
         if check_valid:
-            query = query.filter(
-                is_assigned=True
-            ).exclude(
-                expires_at__lte=utc_now()
-            )
+            query = query.filter(is_assigned=True).exclude(expires_at__lte=utc_now())
 
         return await query.exists()
 
@@ -79,10 +72,7 @@ class TenantBaseComponent(BaseComponent):
         return tenant
 
     async def get_enabled_tenants(
-            self,
-            offset: int = 0,
-            limit: int = 20,
-            tenant_type: Optional[str] = None
+        self, offset: int = 0, limit: int = 20, tenant_type: Optional[str] = None
     ) -> Tuple[List[Tenant], int]:
         """
         获取所有启用的租户列表（支持分页和类型过滤）
@@ -95,12 +85,7 @@ class TenantBaseComponent(BaseComponent):
         if tenant_type:
             filters["tenant_type"] = tenant_type
 
-        return await self.filter(
-            offset=offset,
-            limit=limit,
-            order_by="-created_at",
-            **filters
-        )
+        return await self.filter(offset=offset, limit=limit, order_by="-created_at", **filters)
 
     async def get_expired_tenants(self) -> List[Tenant]:
         """
@@ -108,8 +93,4 @@ class TenantBaseComponent(BaseComponent):
         :return: 过期租户列表
         """
         now = utc_now()
-        return await self.model.objects.filter(
-            is_enabled=True,
-            expired_at__isnull=False,
-            expired_at__lte=now
-        ).all()
+        return await self.model.objects.filter(is_enabled=True, expired_at__isnull=False, expired_at__lte=now).all()

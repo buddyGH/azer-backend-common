@@ -15,7 +15,7 @@ LimitType = Literal["ip", "id"]
 logging.basicConfig(
     level=logging.INFO,
     handlers=[logging.StreamHandler(stream=sys.stdout)],
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -124,7 +124,7 @@ class CustomBaseConfig(PydanticBaseSettings):
                 merged[key] = value
         return merged
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def load_configs_from_dir(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         try:
@@ -159,10 +159,7 @@ class CustomBaseConfig(PydanticBaseSettings):
             return env_config
 
         # 按文件名排序加载（保证加载顺序）
-        config_files = sorted(
-            [f for f in config_dir.iterdir() if f.suffix in ('.yaml', '.yml')],
-            key=lambda x: x.name
-        )
+        config_files = sorted([f for f in config_dir.iterdir() if f.suffix in (".yaml", ".yml")], key=lambda x: x.name)
         for config_file in config_files:
             try:
                 with open(config_file, "r", encoding="utf-8") as f:
@@ -176,7 +173,7 @@ class CustomBaseConfig(PydanticBaseSettings):
         return env_config
 
     model_config = SettingsConfigDict(
-        extra='ignore',
+        extra="ignore",
         env_prefix="APP_",
         env_nested_delimiter="__",  # ⚠️ 使用双下划线表示嵌套字段！！！，例如 APP_DB__HOST 对应 db.host
         case_sensitive=False,  # 环境变量不区分大小写
@@ -185,25 +182,10 @@ class CustomBaseConfig(PydanticBaseSettings):
 
 class ServerConfig(CustomBaseConfig):
     config_key = "server"
-    api_root: str = Field(
-        "/api/v897",
-        min_length=1,
-        pattern=r"^/[a-zA-Z0-9/_-]+$"
-    )
-    api_prefix: str = Field(
-        "",
-        pattern=r"^(/[a-zA-Z0-9/_-]+)*$"
-    )
-    api_title: str = Field(
-        "Service-API-v789",
-        min_length=3,
-        max_length=100
-    )
-    api_version: str = Field(
-        "v789",
-        min_length=1,
-        max_length=20
-    )
+    api_root: str = Field("/api/v897", min_length=1, pattern=r"^/[a-zA-Z0-9/_-]+$")
+    api_prefix: str = Field("", pattern=r"^(/[a-zA-Z0-9/_-]+)*$")
+    api_title: str = Field("Service-API-v789", min_length=3, max_length=100)
+    api_version: str = Field("v789", min_length=1, max_length=20)
     environment: EnvironmentType = Field("development")
 
     @field_validator("environment")
@@ -214,21 +196,13 @@ class ServerConfig(CustomBaseConfig):
             raise ValueError(f"运行环境仅支持 {allowed_envs}，当前值: {v}")
         return v
 
-    model_config = SettingsConfigDict(env_prefix='SERVER__')
+    model_config = SettingsConfigDict(env_prefix="SERVER__")
 
 
 class UvicornConfig(CustomBaseConfig):
     config_key = "uvicorn"
-    host: str = Field(
-        "172.16.0.123",
-        min_length=1,
-        max_length=100
-    )
-    port: int = Field(
-        9876,
-        gt=0,
-        lt=65536
-    )
+    host: str = Field("172.16.0.123", min_length=1, max_length=100)
+    port: int = Field(9876, gt=0, lt=65536)
     reload: bool = Field(False)
     log_level: str = Field("WARNING")
     environment: EnvironmentType = Field("development")
@@ -236,62 +210,40 @@ class UvicornConfig(CustomBaseConfig):
     def __init__(self, **values):
         super().__init__(**values)
         if values.get("reload") is None:
-            self.reload = self.environment != 'production'
+            self.reload = self.environment != "production"
 
-    model_config = SettingsConfigDict(env_prefix='UVICORN__')
+    model_config = SettingsConfigDict(env_prefix="UVICORN__")
 
 
 class DatabaseConfig(PydanticBaseSettings):
-    host: str = Field(
-        "192.168.1.234",
-        min_length=1,
-        max_length=100
-    )
-    port: int = Field(
-        4567,
-        gt=0,
-        lt=65536
-    )
-    user: Optional[str] = Field(
-        None,
-        min_length=1,
-        max_length=50
-    )
-    password: Optional[str] = Field(
-        None,
-        min_length=8,
-        max_length=100
-    )
-    database: Optional[str] = Field(
-        None,
-        min_length=1,
-        max_length=50
-    )
+    host: str = Field("192.168.1.234", min_length=1, max_length=100)
+    port: int = Field(4567, gt=0, lt=65536)
+    user: Optional[str] = Field(None, min_length=1, max_length=50)
+    password: Optional[str] = Field(None, min_length=8, max_length=100)
+    database: Optional[str] = Field(None, min_length=1, max_length=50)
 
-    model_config = SettingsConfigDict(extra='ignore')
+    model_config = SettingsConfigDict(extra="ignore")
 
 
 class TortoiseConfig(CustomBaseConfig):
     """
     Tortoise ORM 配置类，包含数据库连接的详细配置项。
     """
+
     config_key = "tortoise"
-    engine: str = Field(
-        'tortoise.backends.mysql',
-        pattern=r"^tortoise\.backends\.[a-zA-Z0-9_]+$"
-    )
+    engine: str = Field("tortoise.backends.mysql", pattern=r"^tortoise\.backends\.[a-zA-Z0-9_]+$")
     min_connections: int = Field(3, gt=0)
     max_connections: int = Field(20000, gt=0)
     echo: bool = Field(False)
     use_tz: bool = Field(False)
-    timezone: str = Field('Asia/Shanghai', pattern=r"^[a-zA-Z/_]+$")
+    timezone: str = Field("Asia/Shanghai", pattern=r"^[a-zA-Z/_]+$")
     pool_recycle: int = Field(32000, gt=0)
     global_models: str = Field("")
     additional_models: str = Field("")
     master: DatabaseConfig = Field(default_factory=DatabaseConfig)
     replica: DatabaseConfig = Field(default_factory=DatabaseConfig)
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def sync_replica_with_master(self) -> "TortoiseConfig":
         """
         后置验证器：若replica未显式配置（使用默认值），则自动复用master的配置
@@ -325,7 +277,7 @@ class TortoiseConfig(CustomBaseConfig):
 
         :return: Tortoise ORM 配置字典
         """
-        models_list = [item.strip() for item in (self.global_models + ',' + self.additional_models).split(',') if item]
+        models_list = [item.strip() for item in (self.global_models + "," + self.additional_models).split(",") if item]
         return {
             "connections": {
                 "master": {
@@ -338,7 +290,7 @@ class TortoiseConfig(CustomBaseConfig):
                         "database": self.master.database,
                         "minsize": self.min_connections,
                         "maxsize": self.max_connections,
-                    }
+                    },
                 },
                 "replica": {
                     "engine": self.engine,
@@ -350,8 +302,8 @@ class TortoiseConfig(CustomBaseConfig):
                         "database": self.replica.database,
                         "minsize": self.min_connections,
                         "maxsize": self.max_connections,
-                    }
-                }
+                    },
+                },
             },
             "apps": {
                 "models": {
@@ -362,34 +314,18 @@ class TortoiseConfig(CustomBaseConfig):
             "routers": ["azer_common.databases.router.DatabaseRouter"],
             "use_tz": self.use_tz,
             "timezone": self.timezone,
-            "pool_recycle": self.pool_recycle
+            "pool_recycle": self.pool_recycle,
         }
 
-    model_config = SettingsConfigDict(env_prefix='TORTOISE__')
+    model_config = SettingsConfigDict(env_prefix="TORTOISE__")
 
 
 class RedisSingleConfig(PydanticBaseSettings):
-    host: str = Field(
-        "10.0.0.156",
-        min_length=1,
-        max_length=100
-    )
-    port: int = Field(
-        7890,
-        gt=0,
-        lt=65536
-    )
+    host: str = Field("10.0.0.156", min_length=1, max_length=100)
+    port: int = Field(7890, gt=0, lt=65536)
     database: int = Field(7, ge=0, le=15)
-    user: Optional[str] = Field(
-        None,
-        min_length=1,
-        max_length=50
-    )
-    password: Optional[str] = Field(
-        None,
-        min_length=8,
-        max_length=100
-    )
+    user: Optional[str] = Field(None, min_length=1, max_length=50)
+    password: Optional[str] = Field(None, min_length=8, max_length=100)
 
 
 class RedisConfig(CustomBaseConfig):
@@ -397,17 +333,17 @@ class RedisConfig(CustomBaseConfig):
     master: RedisSingleConfig = Field(default_factory=RedisSingleConfig)
     replica: RedisSingleConfig = Field(default_factory=RedisSingleConfig)
 
-    model_config = SettingsConfigDict(env_prefix='REDIS__')
+    model_config = SettingsConfigDict(env_prefix="REDIS__")
 
 
 class JWTConfig(CustomBaseConfig):
     config_key = "jwt"
-    algorithm: str = Field('RS384')
+    algorithm: str = Field("RS384")
     access_expire_minutes: int = Field(23, gt=0)
     refresh_expire_days: int = Field(47, gt=0)
     private_key_path: Optional[str] = Field(None, min_length=1)
     public_key_path: Optional[str] = Field(None, min_length=1)
-    issuer: str = Field('api.example-tests.com', min_length=3, max_length=100)
+    issuer: str = Field("api.example-tests.com", min_length=3, max_length=100)
     token_prefix: str = Field("Token ", min_length=1, max_length=20)
     redis_session_prefix: str = Field("jwt_session_897:", min_length=1, max_length=50)
 
@@ -431,7 +367,7 @@ class JWTConfig(CustomBaseConfig):
             raise ValueError(f"JWT算法仅支持{allowed_algos}，当前为{v}")
         return v
 
-    model_config = SettingsConfigDict(env_prefix='JWT__')
+    model_config = SettingsConfigDict(env_prefix="JWT__")
 
 
 class RateLimiterConfig(CustomBaseConfig):
@@ -451,7 +387,7 @@ class RateLimiterConfig(CustomBaseConfig):
             raise ValueError(f"限速类型仅支持 {allowed_types}，当前值: {v}")
         return v
 
-    model_config = SettingsConfigDict(env_prefix='RATE_LIMITER__')
+    model_config = SettingsConfigDict(env_prefix="RATE_LIMITER__")
 
 
 class LoggingConfig(CustomBaseConfig):
@@ -459,7 +395,7 @@ class LoggingConfig(CustomBaseConfig):
     service_path: Optional[str] = Field(None, min_length=1)
     task_path: Optional[str] = Field(None, min_length=1)
     level: str = Field("WARNING")
-    format: str = Field('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    format: str = Field("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     interval: int = Field(3, gt=0)
     backup_count: int = Field(14, gt=0)
     sensitive_headers: List[str] = Field(default_factory=list)
@@ -484,13 +420,10 @@ class LoggingConfig(CustomBaseConfig):
                 logger.info(f"创建日志目录: {log_dir}")
 
     model_config = SettingsConfigDict(
-        env_prefix='LOGGING__',
+        env_prefix="LOGGING__",
         json_schema_extra={
-            "example": {
-                "sensitive_fields": ["password", "credit_card"],
-                "sensitive_routes": ["/login/*"]
-            }
-        }
+            "example": {"sensitive_fields": ["password", "credit_card"], "sensitive_routes": ["/login/*"]}
+        },
     )
 
 

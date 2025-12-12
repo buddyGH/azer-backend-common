@@ -10,6 +10,7 @@ class SexEnum(str, Enum):
 
 class UserLifecycleStatus(str, Enum):
     """用户生命周期状态 - 核心状态"""
+
     UNVERIFIED = "unverified"  # 未验证
     PENDING = "pending"  # 待审核（需要人工介入）
     ACTIVE = "active"  # 正常活跃
@@ -19,6 +20,7 @@ class UserLifecycleStatus(str, Enum):
 
 class UserSecurityStatus(str, Enum):
     """用户安全状态 - 临时/风控状态"""
+
     FROZEN = "frozen"  # 风控冻结（临时）
     SUSPENDED = "suspended"  # 管理员暂停
     BANNED = "banned"  # 永久封禁
@@ -26,6 +28,7 @@ class UserSecurityStatus(str, Enum):
 
 class MFATypeEnum(str, Enum):
     """MFA类型枚举"""
+
     NONE = "none"  # 未启用
     TOTP = "totp"  # 基于时间的动态口令（如Google Authenticator）
     SMS = "sms"  # 短信验证码
@@ -34,6 +37,7 @@ class MFATypeEnum(str, Enum):
 
 class RolePermissionOperationType(str, Enum):
     """权限关联操作类型枚举"""
+
     GRANT = "GRANT"  # 授予权限
     REVOKE = "REVOKE"  # 撤销权限
     ACTIVATE = "ACTIVATE"  # 激活权限
@@ -43,6 +47,7 @@ class RolePermissionOperationType(str, Enum):
 
 class UserRoleOperationType(str, Enum):
     """用户角色操作类型枚举"""
+
     GRANT = "GRANT"  # 授予角色
     REVOKE = "REVOKE"  # 撤销角色
     RENEW = "RENEW"  # 续期角色

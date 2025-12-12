@@ -5,10 +5,4 @@ from .tenant import UserTenantComponent
 from .role import UserRoleComponent
 from .stats import UserStatsComponent
 
-__all__ = [
-    'UserBaseComponent',
-    'UserStatusComponent',
-    'UserRoleComponent',
-    'UserTenantComponent',
-    'UserStatsComponent'
-]
+__all__ = ["UserBaseComponent", "UserStatusComponent", "UserRoleComponent", "UserTenantComponent", "UserStatsComponent"]

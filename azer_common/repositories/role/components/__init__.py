@@ -2,7 +2,4 @@
 from .base import RoleBaseComponent
 from .permission import RolePermissionComponent
 
-__all__ = [
-    'RoleBaseComponent',
-    'RolePermissionComponent'
-]
+__all__ = ["RoleBaseComponent", "RolePermissionComponent"]

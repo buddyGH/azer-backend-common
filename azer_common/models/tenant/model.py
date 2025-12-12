@@ -6,63 +6,32 @@ from azer_common.utils.time import utc_now
 
 class Tenant(BaseModel):
     """租户表，存储多租户体系下的租户核心信息"""
+
     # 核心标识字段
     code = fields.CharField(
-        max_length=64,
-        unique=True,
-        description='租户编码（全局唯一，小写字母/数字/下划线/中划线，以字母开头）'
+        max_length=64, unique=True, description="租户编码（全局唯一，小写字母/数字/下划线/中划线，以字母开头）"
     )
-    name = fields.CharField(
-        max_length=100,
-        description='租户名称'
-    )
-    tenant_type = fields.CharField(
-        max_length=32,
-        default="normal",
-        description='租户类型（业务自定义分类）'
-    )
+    name = fields.CharField(max_length=100, description="租户名称")
+    tenant_type = fields.CharField(max_length=32, default="normal", description="租户类型（业务自定义分类）")
 
     # 状态控制字段
-    is_enabled = fields.BooleanField(
-        default=True,
-        description='租户是否启用（禁用后租户下所有资源失效）'
-    )
-    is_system = fields.BooleanField(
-        default=False,
-        description='是否系统内置租户（不可删除、禁用、设置过期时间）'
-    )
-    expired_at = fields.DatetimeField(
-        null=True,
-        description='租户过期时间（null表示永久有效）'
-    )
+    is_enabled = fields.BooleanField(default=True, description="租户是否启用（禁用后租户下所有资源失效）")
+    is_system = fields.BooleanField(default=False, description="是否系统内置租户（不可删除、禁用、设置过期时间）")
+    expired_at = fields.DatetimeField(null=True, description="租户过期时间（null表示永久有效）")
 
     # 扩展信息字段
-    contact = fields.CharField(
-        max_length=50,
-        null=True,
-        description='租户联系人'
-    )
-    mobile = fields.CharField(
-        max_length=15,
-        null=True,
-        description='租户联系电话'
-    )
-    config = fields.JSONField(
-        null=True,
-        description='租户自定义配置（如权限策略、功能开关）'
-    )
+    contact = fields.CharField(max_length=50, null=True, description="租户联系人")
+    mobile = fields.CharField(max_length=15, null=True, description="租户联系电话")
+    config = fields.JSONField(null=True, description="租户自定义配置（如权限策略、功能开关）")
 
     # 关联字段
     users = fields.ManyToManyField(
-        'models.User',
-        related_name='tenants',
-        through='azer_tenant_user',
-        description='租户下的用户列表'
+        "models.User", related_name="tenants", through="azer_tenant_user", description="租户下的用户列表"
     )
 
     class Meta:
         table = "azer_tenant"
-        table_description = '租户表'
+        table_description = "租户表"
         indexes = [("code", "is_enabled")]
 
     class PydanticMeta:
@@ -91,11 +60,9 @@ class Tenant(BaseModel):
         # 编码非空+格式校验
         if not self.code:
             raise ValueError("租户编码（code）不能为空")
-        code_pattern = r'^[a-z][a-z0-9_\-]{0,63}$'
+        code_pattern = r"^[a-z][a-z0-9_\-]{0,63}$"
         if not re.match(code_pattern, self.code):
-            raise ValueError(
-                "租户编码格式错误：必须以小写字母开头，仅包含小写字母、数字、下划线、中划线，长度1-64"
-            )
+            raise ValueError("租户编码格式错误：必须以小写字母开头，仅包含小写字母、数字、下划线、中划线，长度1-64")
 
         # 过期时间校验
         if self.expired_at is not None and self.expired_at <= utc_now():

@@ -12,19 +12,19 @@ class UserBaseComponent(BaseComponent):
     # ========== 基础查询方法 ==========
     async def get_by_username(self, username: str) -> Optional[User]:
         """根据用户名获取用户"""
-        return await self.get_by_field('username', username)
+        return await self.get_by_field("username", username)
 
     async def get_by_email(self, email: str) -> Optional[User]:
         """根据邮箱获取用户"""
-        return await self.get_by_field('email', email)
+        return await self.get_by_field("email", email)
 
     async def get_by_mobile(self, mobile: str) -> Optional[User]:
         """根据手机号获取用户"""
-        return await self.get_by_field('mobile', mobile)
+        return await self.get_by_field("mobile", mobile)
 
     async def get_by_identity_card(self, identity_card: str) -> Optional[User]:
         """根据身份证号获取用户"""
-        return await self.get_by_field('identity_card', identity_card)
+        return await self.get_by_field("identity_card", identity_card)
 
     async def get_with_credential(self, user_id: str) -> Optional[User]:
         """
@@ -33,9 +33,11 @@ class UserBaseComponent(BaseComponent):
         :return: 包含认证凭证的用户实例/None
         """
         # 关联查询用户认证凭证（一对一关系）
-        user = await self.model.objects.filter(id=user_id).select_related(
-            "credential"  # 关联UserCredential模型（外键关联User）
-        ).first()
+        user = (
+            await self.model.objects.filter(id=user_id)
+            .select_related("credential")  # 关联UserCredential模型（外键关联User）
+            .first()
+        )
         return user
 
     async def get_display_name(self, user_id: str) -> Optional[str]:
@@ -83,11 +85,11 @@ class UserBaseComponent(BaseComponent):
         return await query.exists()
 
     async def check_identity_info_exists(
-            self,
-            identity_card: Optional[str] = None,
-            real_name: Optional[str] = None,
-            require_both_match: bool = True,
-            exclude_user_id: Optional[str] = None
+        self,
+        identity_card: Optional[str] = None,
+        real_name: Optional[str] = None,
+        require_both_match: bool = True,
+        exclude_user_id: Optional[str] = None,
     ) -> Tuple[bool, Optional[User]]:
         """
         检查身份信息是否已存在
@@ -172,13 +174,13 @@ class UserBaseComponent(BaseComponent):
             return user
 
     async def update_profile(
-            self,
-            user_id: str,
-            nick_name: Optional[str] = None,
-            avatar: Optional[str] = None,
-            desc: Optional[str] = None,
-            home_path: Optional[str] = None,
-            sex: Optional[Any] = None
+        self,
+        user_id: str,
+        nick_name: Optional[str] = None,
+        avatar: Optional[str] = None,
+        desc: Optional[str] = None,
+        home_path: Optional[str] = None,
+        sex: Optional[Any] = None,
     ) -> Optional[User]:
         """
         更新用户基础资料（非敏感、非身份类信息）
@@ -229,10 +231,7 @@ class UserBaseComponent(BaseComponent):
             return user
 
     async def update_contact_info(
-            self,
-            user_id: str,
-            mobile: Optional[str] = None,
-            email: Optional[str] = None
+        self, user_id: str, mobile: Optional[str] = None, email: Optional[str] = None
     ) -> Optional[User]:
         """
         更新用户联系信息（手机号/邮箱，强制唯一性校验）
@@ -258,9 +257,13 @@ class UserBaseComponent(BaseComponent):
                     update_fields.append("mobile")
                 else:
                     # 检查手机号是否已被其他用户占用
-                    exists = await self.model.objects.filter(
-                        mobile=mobile,
-                    ).exclude(id=user_id).exists()
+                    exists = (
+                        await self.model.objects.filter(
+                            mobile=mobile,
+                        )
+                        .exclude(id=user_id)
+                        .exists()
+                    )
                     if exists:
                         raise ValueError(f"手机号{mobile}已被其他用户使用")
                     user.mobile = mobile
@@ -273,9 +276,7 @@ class UserBaseComponent(BaseComponent):
                     update_fields.append("email")
                 else:
                     # 检查邮箱是否已被其他用户占用
-                    exists = await self.model.objects.filter(
-                        email=email
-                    ).exclude(id=user_id).exists()
+                    exists = await self.model.objects.filter(email=email).exclude(id=user_id).exists()
                     if exists:
                         raise ValueError(f"邮箱{email}已被其他用户使用")
                     user.email = email
@@ -287,11 +288,11 @@ class UserBaseComponent(BaseComponent):
             return user
 
     async def update_personal_info(
-            self,
-            user_id: str,
-            real_name: Optional[str] = None,
-            identity_card: Optional[str] = None,
-            birth_date: Optional[date] = None
+        self,
+        user_id: str,
+        real_name: Optional[str] = None,
+        identity_card: Optional[str] = None,
+        birth_date: Optional[date] = None,
     ) -> Optional[User]:
         """
         更新用户身份信息（姓名/身份证号/生日，身份证号需唯一性校验）
@@ -322,9 +323,13 @@ class UserBaseComponent(BaseComponent):
                     user.identity_card = None
                     update_fields.append("identity_card")
                 else:
-                    exists = await self.model.objects.filter(
-                        identity_card=identity_card,
-                    ).exclude(id=user_id).exists()
+                    exists = (
+                        await self.model.objects.filter(
+                            identity_card=identity_card,
+                        )
+                        .exclude(id=user_id)
+                        .exists()
+                    )
                     if exists:
                         raise ValueError(f"身份证号{identity_card}已被其他用户使用")
                     user.identity_card = identity_card
@@ -340,12 +345,7 @@ class UserBaseComponent(BaseComponent):
 
             return user
 
-    async def update_preferences(
-            self,
-            user_id: str,
-            preferences: Dict[str, Any],
-            merge: bool = True
-    ) -> Optional[User]:
+    async def update_preferences(self, user_id: str, preferences: Dict[str, Any], merge: bool = True) -> Optional[User]:
         """
         更新用户偏好设置（JSON字段，支持合并/覆盖）
         :param user_id: 用户ID
@@ -382,4 +382,4 @@ class UserBaseComponent(BaseComponent):
         user = await self.get_by_id(user_id)
         if not user:
             return False
-        return hasattr(user, 'is_system') and user.is_system
+        return hasattr(user, "is_system") and user.is_system

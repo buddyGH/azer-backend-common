@@ -5,51 +5,32 @@ from azer_common.utils.time import utc_now
 
 class UserRole(BaseModel):
     """用户角色关联表，管理用户在租户下的角色分配关系"""
+
     # 核心关联字段
     user = fields.ForeignKeyField(
-        'models.User',
-        related_name='user_roles',
-        description='关联用户',
-        on_delete=fields.RESTRICT,
-        null=False
+        "models.User", related_name="user_roles", description="关联用户", on_delete=fields.RESTRICT, null=False
     )
     role = fields.ForeignKeyField(
-        'models.Role',
-        related_name='role_users',
-        description='关联角色',
-        on_delete=fields.RESTRICT,
-        null=False
+        "models.Role", related_name="role_users", description="关联角色", on_delete=fields.RESTRICT, null=False
     )
     tenant = fields.ForeignKeyField(
-        'models.Tenant',
-        related_name='user_roles',
-        description='所属租户（强关联）',
+        "models.Tenant",
+        related_name="user_roles",
+        description="所属租户（强关联）",
         on_delete=fields.RESTRICT,
         null=False,
-        index=True
+        index=True,
     )
 
     # 状态控制字段
-    is_assigned = fields.BooleanField(
-        default=True,
-        description='是否分配（用户-角色关联关系是否有效）'
-    )
-    expires_at = fields.DatetimeField(
-        null=True,
-        description='到期时间（null表示永久有效）'
-    )
-    metadata = fields.JSONField(
-        null=True,
-        description='扩展元数据'
-    )
+    is_assigned = fields.BooleanField(default=True, description="是否分配（用户-角色关联关系是否有效）")
+    expires_at = fields.DatetimeField(null=True, description="到期时间（null表示永久有效）")
+    metadata = fields.JSONField(null=True, description="扩展元数据")
 
     class Meta:
         table = "azer_user_role"
-        table_description = '用户角色关系表（核心关联表）'
-        unique_together = [
-            ("user_id", "role_id", "tenant_id", "is_deleted"),
-            ("user_id", "role_id", "tenant_id")
-        ]
+        table_description = "用户角色关系表（核心关联表）"
+        unique_together = [("user_id", "role_id", "tenant_id", "is_deleted"), ("user_id", "role_id", "tenant_id")]
         indexes = [
             ("tenant_id", "user_id", "is_assigned", "is_deleted"),
             ("tenant_id", "role_id", "is_assigned", "is_deleted"),

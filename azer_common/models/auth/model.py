@@ -17,118 +17,49 @@ class UserCredential(BaseModel):
     """用户认证表 - 存储认证相关信息"""
 
     # 关联用户
-    user = fields.OneToOneField(
-        'models.User',
-        related_name='auth',
-        on_delete=fields.CASCADE,
-        description='关联用户'
-    )
+    user = fields.OneToOneField("models.User", related_name="auth", on_delete=fields.CASCADE, description="关联用户")
 
     # 认证凭证
     password = fields.CharField(
         max_length=200,
-        description='密码（argon2 哈希存储）',
+        description="密码（argon2 哈希存储）",
         null=True,  # 允许为空，支持第三方登录用户
-        write_only=True
+        write_only=True,
     )
 
     # 认证状态
-    failed_login_attempts = fields.IntField(
-        default=0,
-        description='连续登录失败次数'
-    )
-    password_changed_at = fields.DatetimeField(
-        null=True,
-        description='密码最后修改时间'
-    )
+    failed_login_attempts = fields.IntField(default=0, description="连续登录失败次数")
+    password_changed_at = fields.DatetimeField(null=True, description="密码最后修改时间")
 
     # MFA认证
-    mfa_enabled = fields.BooleanField(
-        default=False,
-        description='是否启用MFA'
-    )
-    mfa_secret = fields.CharField(
-        max_length=100,
-        null=True,
-        write_only=True,
-        description='MFA密钥'
-    )
-    backup_codes = fields.JSONField(
-        null=True,
-        write_only=True,
-        description='备份验证码'
-    )
-    mfa_type = fields.CharEnumField(
-        MFATypeEnum,
-        default=MFATypeEnum.NONE,
-        description='MFA认证类型'
-    )
-    mfa_verified_at = fields.DatetimeField(
-        null=True,
-        description='MFA最后验证时间'
-    )
+    mfa_enabled = fields.BooleanField(default=False, description="是否启用MFA")
+    mfa_secret = fields.CharField(max_length=100, null=True, write_only=True, description="MFA密钥")
+    backup_codes = fields.JSONField(null=True, write_only=True, description="备份验证码")
+    mfa_type = fields.CharEnumField(MFATypeEnum, default=MFATypeEnum.NONE, description="MFA认证类型")
+    mfa_verified_at = fields.DatetimeField(null=True, description="MFA最后验证时间")
 
     # 第三方登录（保留基本信息，token存Redis）
-    oauth_platform = fields.CharField(
-        max_length=20,
-        null=True,
-        description='第三方登录平台'
-    )
-    oauth_uid = fields.CharField(
-        max_length=100,
-        null=True,
-        index=True,
-        description='第三方平台唯一ID'
-    )
+    oauth_platform = fields.CharField(max_length=20, null=True, description="第三方登录平台")
+    oauth_uid = fields.CharField(max_length=100, null=True, index=True, description="第三方平台唯一ID")
 
     # 验证状态
-    email_verified_at = fields.DatetimeField(
-        null=True,
-        description='邮箱验证时间'
-    )
-    mobile_verified_at = fields.DatetimeField(
-        null=True,
-        description='手机验证时间'
-    )
+    email_verified_at = fields.DatetimeField(null=True, description="邮箱验证时间")
+    mobile_verified_at = fields.DatetimeField(null=True, description="手机验证时间")
 
     # 登录统计
-    login_count = fields.IntField(
-        default=0,
-        description='登录次数'
-    )
-    total_online_duration = fields.IntField(
-        default=0,
-        description='总在线时长（秒）'
-    )
-    last_login_at = fields.DatetimeField(
-        null=True,
-        description='最后登录时间'
-    )
-    last_login_ip = fields.CharField(
-        max_length=45,
-        null=True,
-        description='最后登录IP'
-    )
-    registration_ip = fields.CharField(
-        max_length=45,
-        null=True,
-        description='注册IP'
-    )
-    registration_source = fields.CharField(
-        max_length=50,
-        null=True,
-        description='注册来源'
-    )
+    login_count = fields.IntField(default=0, description="登录次数")
+    total_online_duration = fields.IntField(default=0, description="总在线时长（秒）")
+    last_login_at = fields.DatetimeField(null=True, description="最后登录时间")
+    last_login_ip = fields.CharField(max_length=45, null=True, description="最后登录IP")
+    registration_ip = fields.CharField(max_length=45, null=True, description="注册IP")
+    registration_source = fields.CharField(max_length=50, null=True, description="注册来源")
 
     # 安全相关
-    password_expires_at = fields.DatetimeField(
-        null=True,
-        description='密码过期时间'
-    )
+    password_expires_at = fields.DatetimeField(null=True, description="密码过期时间")
 
     class Meta:
         table = "azer_user_credential"
-        table_description = '用户认证表'
+        table_description = "用户认证表"
         indexes = [
             ("oauth_platform", "oauth_uid"),  # 复合索引
         ]
@@ -223,8 +154,7 @@ class UserCredential(BaseModel):
 
         try:
             return PH_SINGLETON.verify(self.password, password)
-        except (argon2.exceptions.VerifyMismatchError,
-                argon2.exceptions.VerificationError):
+        except (argon2.exceptions.VerifyMismatchError, argon2.exceptions.VerificationError):
             return False
 
     def is_password_expired(self) -> bool:
@@ -236,35 +166,35 @@ class UserCredential(BaseModel):
     def get_mfa_info(self) -> dict:
         """获取MFA相关信息"""
         return {
-            'mfa_enabled': self.mfa_enabled,
-            'mfa_type': self.mfa_type.value if self.mfa_type else None,
-            'mfa_verified_at': self.mfa_verified_at,
-            'requires_mfa': self.requires_mfa,
+            "mfa_enabled": self.mfa_enabled,
+            "mfa_type": self.mfa_type.value if self.mfa_type else None,
+            "mfa_verified_at": self.mfa_verified_at,
+            "requires_mfa": self.requires_mfa,
         }
 
     def get_verification_status(self) -> dict:
         """获取验证状态信息"""
         return {
-            'email_verified': self.is_email_verified,
-            'mobile_verified': self.is_mobile_verified,
-            'fully_verified': self.is_verified,
-            'email_verified_at': self.email_verified_at,
-            'mobile_verified_at': self.mobile_verified_at,
+            "email_verified": self.is_email_verified,
+            "mobile_verified": self.is_mobile_verified,
+            "fully_verified": self.is_verified,
+            "email_verified_at": self.email_verified_at,
+            "mobile_verified_at": self.mobile_verified_at,
         }
 
     # 便捷方法
     def get_security_info(self) -> dict:
         """获取安全信息摘要（用于日志或审计）"""
         return {
-            'user_id': self.user_id,
-            'mfa_enabled': self.mfa_enabled,
-            'mfa_type': self.mfa_type.value if self.mfa_type else None,
-            'last_login_at': self.last_login_at,
-            'password_changed_at': self.password_changed_at,
-            'email_verified': self.is_email_verified,
-            'mobile_verified': self.is_mobile_verified,
-            'failed_login_attempts': self.failed_login_attempts,
-            'password_expired': self.is_password_expired(),
+            "user_id": self.user_id,
+            "mfa_enabled": self.mfa_enabled,
+            "mfa_type": self.mfa_type.value if self.mfa_type else None,
+            "last_login_at": self.last_login_at,
+            "password_changed_at": self.password_changed_at,
+            "email_verified": self.is_email_verified,
+            "mobile_verified": self.is_mobile_verified,
+            "failed_login_attempts": self.failed_login_attempts,
+            "password_expired": self.is_password_expired(),
         }
 
 

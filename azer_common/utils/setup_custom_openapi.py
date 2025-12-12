@@ -5,16 +5,16 @@ from fastapi.openapi.utils import get_openapi  # 直接使用FastAPI原生函数
 
 
 def setup_custom_openapi(
-        app: FastAPI,
-        server_description: Optional[str] = None,
-        extra_servers: Optional[List[Dict[str, Any]]] = None,
-        openapi_title: Optional[str] = None,
-        openapi_version: Optional[str] = None,
-        tags: Optional[List[Dict[str, Any]]] = None,
-        global_security: Optional[List[Dict[str, List[str]]]] = None,
-        openapi_description: Optional[str] = None,
-        contact: Optional[Dict[str, Any]] = None,
-        license_info: Optional[Dict[str, Any]] = None
+    app: FastAPI,
+    server_description: Optional[str] = None,
+    extra_servers: Optional[List[Dict[str, Any]]] = None,
+    openapi_title: Optional[str] = None,
+    openapi_version: Optional[str] = None,
+    tags: Optional[List[Dict[str, Any]]] = None,
+    global_security: Optional[List[Dict[str, List[str]]]] = None,
+    openapi_description: Optional[str] = None,
+    contact: Optional[Dict[str, Any]] = None,
+    license_info: Optional[Dict[str, Any]] = None,
 ) -> None:
     """
     为 FastAPI 应用配置自定义 OpenAPI 规范（兼容原生get_openapi，不修改源码）
@@ -47,10 +47,7 @@ def setup_custom_openapi(
         # 构建基础servers（包含root_path）
         servers = []
         if normalized_root_path:
-            servers.append({
-                "url": normalized_root_path,
-                "description": server_description
-            })
+            servers.append({"url": normalized_root_path, "description": server_description})
         # 合并额外的服务器配置（如测试/开发环境）
         if extra_servers and isinstance(extra_servers, list):
             servers.extend(extra_servers)
@@ -64,7 +61,7 @@ def setup_custom_openapi(
             tags=tags,
             description=openapi_description,
             contact=contact,
-            license_info=license_info
+            license_info=license_info,
         )
 
         # ========== 追加全局认证规则（不修改原生函数，仅后处理schema） ==========

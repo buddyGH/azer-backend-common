@@ -27,6 +27,7 @@ class Extract(Function):
     用于 Tortoise ORM 查询的 Extract 函数包装器。
     使用示例：Extract('hour', F('last_active_at'))
     """
+
     database_func = PypikaExtract
 
 
@@ -34,15 +35,12 @@ class ExtractHour(Extract):
     """专门提取小时的便捷类"""
 
     def __init__(self, source_field):
-        super().__init__('hour', source_field)
+        super().__init__("hour", source_field)
 
 
 class UserStatsComponent(BaseComponent):
 
-    async def count_users_by_status(
-            self,
-            tenant_id: Optional[str] = None
-    ) -> Dict[str, int]:
+    async def count_users_by_status(self, tenant_id: Optional[str] = None) -> Dict[str, int]:
         """
         按状态统计用户数量
         :param tenant_id: 租户ID
@@ -66,22 +64,17 @@ class UserStatsComponent(BaseComponent):
             security_stats[status.value] = count
 
         # 活跃用户统计（ACTIVE且无安全限制）
-        active_count = await query.filter(
-            status=UserLifecycleStatus.ACTIVE,
-            security_status__isnull=True
-        ).count()
+        active_count = await query.filter(status=UserLifecycleStatus.ACTIVE, security_status__isnull=True).count()
 
         return {
             "lifecycle": lifecycle_stats,
             "security": security_stats,
             "active": active_count,
-            "total": sum(lifecycle_stats.values())
+            "total": sum(lifecycle_stats.values()),
         }
 
     async def count_by_status(
-            self,
-            tenant_id: Optional[str] = None,
-            include_deleted: bool = False
+        self, tenant_id: Optional[str] = None, include_deleted: bool = False
     ) -> Dict[UserLifecycleStatus, int]:
         """
         按生命周期状态统计用户数量
@@ -96,9 +89,12 @@ class UserStatsComponent(BaseComponent):
             query = query.filter(tenants__id=tenant_id)
 
         # 分组统计
-        stats = await query.annotate(
-            status_value=F("status")
-        ).group_by("status").values("status").annotate(count=Count("id"))
+        stats = (
+            await query.annotate(status_value=F("status"))
+            .group_by("status")
+            .values("status")
+            .annotate(count=Count("id"))
+        )
 
         # 转换为枚举映射
         result = {status: 0 for status in UserLifecycleStatus}
@@ -109,10 +105,10 @@ class UserStatsComponent(BaseComponent):
         return result
 
     async def count_by_gender(
-            self,
-            tenant_id: Optional[str] = None,
-            status: Optional[UserLifecycleStatus] = None,
-            include_deleted: bool = False
+        self,
+        tenant_id: Optional[str] = None,
+        status: Optional[UserLifecycleStatus] = None,
+        include_deleted: bool = False,
     ) -> Dict[SexEnum, int]:
         """
         按性别统计用户数量
@@ -130,9 +126,12 @@ class UserStatsComponent(BaseComponent):
             query = query.filter(status=status)
 
         # 分组统计（包含None值）
-        stats = await query.annotate(
-            gender_value=F("gender")
-        ).group_by("gender").values("gender").annotate(count=Count("id"))
+        stats = (
+            await query.annotate(gender_value=F("gender"))
+            .group_by("gender")
+            .values("gender")
+            .annotate(count=Count("id"))
+        )
 
         # 转换为枚举映射
         result = {gender: 0 for gender in SexEnum}
@@ -148,11 +147,11 @@ class UserStatsComponent(BaseComponent):
         return result
 
     async def count_by_age_range(
-            self,
-            age_ranges: List[Tuple[int, Optional[int]]],
-            tenant_id: Optional[str] = None,
-            status: Optional[UserLifecycleStatus] = None,
-            include_deleted: bool = False
+        self,
+        age_ranges: List[Tuple[int, Optional[int]]],
+        tenant_id: Optional[str] = None,
+        status: Optional[UserLifecycleStatus] = None,
+        include_deleted: bool = False,
     ) -> Dict[str, int]:
         """
         按年龄区间统计用户数量
@@ -162,10 +161,7 @@ class UserStatsComponent(BaseComponent):
         :param include_deleted: 是否包含软删除用户
         :return: 区间描述-数量映射字典
         """
-        query = self.model.filter(
-            birth_date__isnull=False,
-            is_deleted=False if not include_deleted else True
-        )
+        query = self.model.filter(birth_date__isnull=False, is_deleted=False if not include_deleted else True)
 
         # 附加过滤条件
         if tenant_id:
@@ -214,9 +210,12 @@ class UserStatsComponent(BaseComponent):
         # 2. 安全状态统计
         query = self.model.filter(**base_filters)
 
-        security_stats = await query.annotate(
-            sec_status=F("security_status")
-        ).group_by("security_status").values("security_status").annotate(count=Count("id"))
+        security_stats = (
+            await query.annotate(sec_status=F("security_status"))
+            .group_by("security_status")
+            .values("security_status")
+            .annotate(count=Count("id"))
+        )
 
         security_count = {status: 0 for status in UserSecurityStatus}
         security_count[None] = 0  # 无安全限制
@@ -265,19 +264,11 @@ class UserStatsComponent(BaseComponent):
             "gender_distribution": {k.value if k else "unknown": v for k, v in gender_count.items()},
             "active_users": active_users_count,
             "inactive_users": inactive_users_count,
-            "new_users": {
-                "today": new_today,
-                "yesterday": new_yesterday,
-                "7d": new_7d,
-                "30d": new_30d
-            }
+            "new_users": {"today": new_today, "yesterday": new_yesterday, "7d": new_7d, "30d": new_30d},
         }
 
     async def get_user_growth_by_period(
-            self,
-            start_date: datetime,
-            end_date: datetime,
-            group_by: str = "day"
+        self, start_date: datetime, end_date: datetime, group_by: str = "day"
     ) -> List[Dict]:
         """
         按时间段统计用户增长趋势
@@ -304,28 +295,23 @@ class UserStatsComponent(BaseComponent):
         period_expr = RawSQL(f"strftime({sql_format}, created_at)")
 
         # 筛选指定时间段内创建的用户
-        query = self.model.objects.filter(
-            created_at__gte=start_date,
-            created_at__lte=end_date
-        )
+        query = self.model.objects.filter(created_at__gte=start_date, created_at__lte=end_date)
 
         # 使用 annotate 和 values 进行分组统计
-        growth_data = await query.annotate(
-            period=period_expr
-        ).group_by('period').values('period').annotate(
-            new_count=Count('id')
-        ).order_by('period')
+        growth_data = (
+            await query.annotate(period=period_expr)
+            .group_by("period")
+            .values("period")
+            .annotate(new_count=Count("id"))
+            .order_by("period")
+        )
 
         # 计算累计数量
         cumulative = 0
         result = []
         for item in growth_data:
             cumulative += item["new_count"]
-            result.append({
-                "period": item["period"],
-                "new_users": item["new_count"],
-                "cumulative_users": cumulative
-            })
+            result.append({"period": item["period"], "new_users": item["new_count"], "cumulative_users": cumulative})
 
         return result
 
@@ -350,10 +336,7 @@ class UserStatsComponent(BaseComponent):
 
         # 1. 活跃用户统计（按最后活跃时间分层）
         # 获取在指定时间段内有活跃的用户
-        active_users_query = self.model.filter(
-            last_active_at__gte=start_date,
-            **base_filters
-        )
+        active_users_query = self.model.filter(last_active_at__gte=start_date, **base_filters)
 
         active_users = await active_users_query.all()
 
@@ -386,8 +369,7 @@ class UserStatsComponent(BaseComponent):
         # 30天前的新增用户
         thirty_days_ago = end_date - timedelta(days=30)
         new_users_30d_ago = await self.model.filter(
-            created_at__date=thirty_days_ago.date(),
-            **base_filters
+            created_at__date=thirty_days_ago.date(), **base_filters
         ).values_list("id", flat=True)
 
         total_new = len(new_users_30d_ago)
@@ -396,23 +378,18 @@ class UserStatsComponent(BaseComponent):
             # 次日留存：新增后第二天有活跃
             next_day = thirty_days_ago + timedelta(days=1)
             retained_1d = await self.model.filter(
-                id__in=new_users_30d_ago,
-                last_active_at__date=next_day.date()
+                id__in=new_users_30d_ago, last_active_at__date=next_day.date()
             ).count()
 
             # 7日留存：新增后7天内有活跃
             seven_days_later = thirty_days_ago + timedelta(days=7)
             retained_7d = await self.model.filter(
-                id__in=new_users_30d_ago,
-                last_active_at__gte=thirty_days_ago,
-                last_active_at__lte=seven_days_later
+                id__in=new_users_30d_ago, last_active_at__gte=thirty_days_ago, last_active_at__lte=seven_days_later
             ).count()
 
             # 30日留存：新增后30天内有活跃
             retained_30d = await self.model.filter(
-                id__in=new_users_30d_ago,
-                last_active_at__gte=thirty_days_ago,
-                last_active_at__lte=end_date
+                id__in=new_users_30d_ago, last_active_at__gte=thirty_days_ago, last_active_at__lte=end_date
             ).count()
 
             retention_1d = (retained_1d / total_new) * 100
@@ -423,15 +400,15 @@ class UserStatsComponent(BaseComponent):
 
         # 3. 活跃时段分布（按小时）
         # 获取近30天活跃用户的小时分布
-        hour_stats_query = self.model.filter(
-            last_active_at__gte=end_date - timedelta(days=30),
-            **base_filters
-        )
+        hour_stats_query = self.model.filter(last_active_at__gte=end_date - timedelta(days=30), **base_filters)
 
         # 注意：这里假设数据库支持hour函数，具体语法可能因数据库而异
-        hour_stats = await hour_stats_query.annotate(
-            hour=ExtractHour("last_active_at")
-        ).group_by("hour").values("hour").annotate(count=Count("id"))
+        hour_stats = (
+            await hour_stats_query.annotate(hour=ExtractHour("last_active_at"))
+            .group_by("hour")
+            .values("hour")
+            .annotate(count=Count("id"))
+        )
 
         hour_distribution = {f"{h:02d}:00": 0 for h in range(24)}
         for item in hour_stats:
@@ -439,33 +416,31 @@ class UserStatsComponent(BaseComponent):
             hour_distribution[f"{hour:02d}:00"] = item["count"]
 
         # 4. 非活跃用户数量（30天内无活跃）
-        inactive_users_count = await self.model.filter(
-            **base_filters
-        ).filter(
-            Q(last_active_at__lt=start_date) | Q(last_active_at__isnull=True)
-        ).count()
+        inactive_users_count = (
+            await self.model.filter(**base_filters)
+            .filter(Q(last_active_at__lt=start_date) | Q(last_active_at__isnull=True))
+            .count()
+        )
 
         return {
-            "report_period": {
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat(),
-                "days": days
-            },
+            "report_period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat(), "days": days},
             "active_user_distribution": {
                 "high_active": high_active,  # 7天内活跃
                 "mid_active": mid_active,  # 8-15天活跃
                 "low_active": low_active,  # 16-30天活跃
-                "total_active": len(active_users)
+                "total_active": len(active_users),
             },
             "retention_rate": {
                 "new_users_count": total_new,
                 "1d_retention": round(retention_1d, 2),
                 "7d_retention": round(retention_7d, 2),
-                "30d_retention": round(retention_30d, 2)
+                "30d_retention": round(retention_30d, 2),
             },
             "active_hour_distribution": hour_distribution,
             "inactive_users_count": inactive_users_count,
-            "inactive_users_percentage": round(
-                (inactive_users_count / max(len(active_users) + inactive_users_count, 1)) * 100, 2
-            ) if (len(active_users) + inactive_users_count) > 0 else 0
+            "inactive_users_percentage": (
+                round((inactive_users_count / max(len(active_users) + inactive_users_count, 1)) * 100, 2)
+                if (len(active_users) + inactive_users_count) > 0
+                else 0
+            ),
         }

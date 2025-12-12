@@ -8,11 +8,7 @@ from azer_common.utils.time import utc_now
 
 class UserTenantComponent(BaseComponent):
     async def get_user_tenants(
-            self,
-            user_id: str,
-            is_valid: bool = True,
-            offset: int = 0,
-            limit: int = 20
+        self, user_id: str, is_valid: bool = True, offset: int = 0, limit: int = 20
     ) -> Tuple[List[Tenant], int]:
         """
         获取用户所属的所有租户列表（支持分页）
@@ -25,9 +21,7 @@ class UserTenantComponent(BaseComponent):
         # 先获取用户-租户关联关系
         query = TenantUser.objects.filter(user_id=user_id)
         if is_valid:
-            query = query.filter(is_assigned=True).exclude(
-                expires_at__lte=utc_now()
-            )
+            query = query.filter(is_assigned=True).exclude(expires_at__lte=utc_now())
 
         # 关联租户数据并分页
         query = query.select_related("tenant").order_by("-created_at")
@@ -49,11 +43,12 @@ class UserTenantComponent(BaseComponent):
         :param user_id: 用户ID
         :return: 主租户实例/None
         """
-        tenant_user = await TenantUser.objects.filter(
-            user_id=user_id,
-            is_primary=True,
-            is_assigned=True
-        ).exclude(expires_at__lte=utc_now()).select_related("tenant").first()
+        tenant_user = (
+            await TenantUser.objects.filter(user_id=user_id, is_primary=True, is_assigned=True)
+            .exclude(expires_at__lte=utc_now())
+            .select_related("tenant")
+            .first()
+        )
 
         if not tenant_user or not tenant_user.tenant:
             return None
@@ -71,11 +66,11 @@ class UserTenantComponent(BaseComponent):
         """
         async with self.transaction:
             # 1. 校验用户和租户关联关系是否存在且有效
-            tenant_user = await TenantUser.objects.filter(
-                user_id=user_id,
-                tenant_id=tenant_id,
-                is_assigned=True
-            ).exclude(expires_at__lte=utc_now()).first()
+            tenant_user = (
+                await TenantUser.objects.filter(user_id=user_id, tenant_id=tenant_id, is_assigned=True)
+                .exclude(expires_at__lte=utc_now())
+                .first()
+            )
 
             if not tenant_user:
                 raise ValueError(f"用户{user_id}未关联到租户{tenant_id}或关联已失效")

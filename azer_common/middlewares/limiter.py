@@ -51,7 +51,7 @@ async def default_429_callback(request: Request, response: Response, pexpire: in
     raise HTTPException(
         status_code=HTTP_429_TOO_MANY_REQUESTS,
         detail="请求太频繁，请稍后再试。",  # 中文错误信息
-        headers={"Retry-After": str(expire)}
+        headers={"Retry-After": str(expire)},
     )
 
 
@@ -60,7 +60,7 @@ def create_rate_limiter(
     times: Optional[int] = None,
     limit_type: Optional[str] = None,
     identifier: Optional[Callable[[Request], Awaitable[str]]] = None,
-    callback: Optional[Callable[[Request, Response, int], Awaitable[None]]] = None
+    callback: Optional[Callable[[Request, Response, int], Awaitable[None]]] = None,
 ) -> Callable[[Optional[int], Optional[str]], RateLimiter]:
     """
     解耦后的动态限速器创建函数（公共包核心）
@@ -73,6 +73,7 @@ def create_rate_limiter(
     """
     # 1. 开发环境跳过限速（返回空依赖）
     if config.environment == "development":
+
         async def no_op_dependency(request: Request, response: Response):
             return None
 
@@ -84,8 +85,7 @@ def create_rate_limiter(
 
     # 2. 生产/测试环境：返回可动态传参的限速器生成函数
     def _rate_limiter(
-            _times: Optional[int] = None,  # 接口层动态传入的次数
-            _limit_type: Optional[str] = None  # 接口层动态传入的类型
+        _times: Optional[int] = None, _limit_type: Optional[str] = None  # 接口层动态传入的次数  # 接口层动态传入的类型
     ) -> RateLimiter:  # 明确返回 RateLimiter 实例
         # 优先级：接口层传参 > 创建时传参 > 配置默认值
         final_times = _times or times or config.default_times
@@ -99,10 +99,7 @@ def create_rate_limiter(
 
         # 返回真正的 RateLimiter 依赖实例
         return RateLimiter(
-            times=final_times,
-            seconds=60,
-            identifier=final_identifier,
-            callback=callback or default_429_callback
+            times=final_times, seconds=60, identifier=final_identifier, callback=callback or default_429_callback
         )
 
     return _rate_limiter
@@ -113,18 +110,10 @@ def get_rate_limiter_by_level(
     level: str = "medium",
     limit_type: Optional[str] = None,
     identifier: Optional[Callable[[Request], Awaitable[str]]] = None,
-    callback: Optional[Callable[[Request, Response, int], Awaitable[None]]] = None
+    callback: Optional[Callable[[Request, Response, int], Awaitable[None]]] = None,
 ) -> Callable:
-    level_times_map = {
-        "low": config.low,
-        "medium": config.medium,
-        "high": config.high
-    }
+    level_times_map = {"low": config.low, "medium": config.medium, "high": config.high}
     times = level_times_map.get(level, config.default_times)
     return create_rate_limiter(
-        config=config,
-        times=times,
-        limit_type=limit_type,
-        identifier=identifier,
-        callback=callback
+        config=config, times=times, limit_type=limit_type, identifier=identifier, callback=callback
     )
