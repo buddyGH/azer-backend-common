@@ -1,6 +1,5 @@
 # azer_common/repositories/user/components/tenant.py
 from typing import List, Optional, Tuple
-from tortoise.transactions import in_transaction
 from azer_common.models.relations.tenant_user import TenantUser
 from azer_common.models.tenant.model import Tenant
 from azer_common.repositories.base_component import BaseComponent
@@ -71,7 +70,7 @@ class UserTenantComponent(BaseComponent):
         :param tenant_id: 租户ID
         :return: 操作成功返回True
         """
-        async with in_transaction():
+        async with self.transaction:
             # 1. 校验用户和租户关联关系是否存在且有效
             tenant_user = await TenantUser.filter(
                 user_id=user_id,
