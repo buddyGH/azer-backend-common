@@ -75,6 +75,10 @@ class User(BaseModel):
     )
 
     # 用户资料
+    is_system = fields.BooleanField(
+        default=False,
+        description='是否系统内置用户（不可删除）'
+    )
     nick_name = fields.CharField(
         max_length=50,
         null=True,
