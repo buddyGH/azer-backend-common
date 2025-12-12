@@ -1,6 +1,5 @@
 # azer_common/repositories/user/components/role.py
 from typing import Any, Dict, List, Optional, Tuple
-from tortoise.transactions import in_transaction
 from azer_common.models.relations.tenant_user import TenantUser
 from azer_common.models.relations.user_role import UserRole
 from azer_common.models.role.model import Role
@@ -72,7 +71,7 @@ class UserRoleComponent(BaseComponent):
         :param metadata: 扩展元数据
         :return: 创建/更新的用户角色关联实例
         """
-        async with in_transaction():
+        async with self.transaction:
             # 1. 基础校验
             if not await self.exists(id=user_id):
                 raise ValueError(f"用户不存在: {user_id}")
@@ -134,7 +133,7 @@ class UserRoleComponent(BaseComponent):
         :param soft_delete: 是否软删除（True: 标记为未分配，False: 物理删除）
         :return: 操作成功返回True
         """
-        async with in_transaction():
+        async with self.transaction:
             user_role = await UserRole.filter(
                 user_id=user_id,
                 role_id=role_id,
@@ -172,7 +171,7 @@ class UserRoleComponent(BaseComponent):
             - metadata: Optional[Dict] = None
         :return: (成功分配数量, 创建/更新的角色关联列表)
         """
-        async with in_transaction():
+        async with self.transaction:
             # 1. 基础校验
             if not await self.exists(id=user_id):
                 raise ValueError(f"用户不存在: {user_id}")
@@ -240,7 +239,7 @@ class UserRoleComponent(BaseComponent):
         if not role_ids:
             return 0
 
-        async with in_transaction():
+        async with self.transaction:
             if soft_delete:
                 # 批量软删除
                 result = await UserRole.filter(
