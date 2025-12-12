@@ -1,8 +1,9 @@
 # azer_common/models/user/model.py
-from typing import Optional
+from datetime import datetime, timedelta
+from typing import Dict, Optional
 from tortoise import fields
 from azer_common.models.base import BaseModel
-from azer_common.models.enums.base import SexEnum, UserStatusEnum
+from azer_common.models.enums.base import SexEnum, UserLifecycleStatus, UserSecurityStatus
 from azer_common.utils.time import today
 from azer_common.utils.validators import (
     validate_url, validate_username, validate_email,
@@ -23,10 +24,22 @@ class User(BaseModel):
 
     # 账户状态
     status = fields.CharEnumField(
-        UserStatusEnum,
-        default=UserStatusEnum.UNVERIFIED,
-        description='用户核心状态'
+        UserLifecycleStatus,
+        default=UserLifecycleStatus.UNVERIFIED,
+        description='用户生命周期状态'
     )
+
+    security_status = fields.CharEnumField(
+        UserSecurityStatus,
+        null=True,
+        description='安全限制状态（冻结/封禁等）'
+    )
+    # 状态相关时间戳
+    activated_at = fields.DatetimeField(null=True, description='激活时间')
+    last_active_at = fields.DatetimeField(null=True, description='最后活跃时间')
+    frozen_at = fields.DatetimeField(null=True, description='冻结时间')
+    banned_at = fields.DatetimeField(null=True, description='封禁时间')
+    closed_at = fields.DatetimeField(null=True, description='注销时间')
 
     # 个人身份信息
     real_name = fields.CharField(
@@ -127,7 +140,15 @@ class User(BaseModel):
     @property
     def is_active(self) -> bool:
         """检查用户是否处于活跃状态"""
-        return self.status == UserStatusEnum.ACTIVE
+        return (
+                self.status == UserLifecycleStatus.ACTIVE
+                and self.security_status is None
+        )
+
+    @property
+    def is_blocked(self) -> bool:
+        """用户是否被阻止"""
+        return self.security_status is not None
 
     @property
     def display_name(self) -> str:
@@ -143,6 +164,78 @@ class User(BaseModel):
         return _today.year - self.birth_date.year - (
                 (_today.month, _today.day) < (self.birth_date.month, self.birth_date.day)
         )
+
+    @property
+    def days_since_last_active(self) -> Optional[int]:
+        """距离上次活跃的天数"""
+        duration = self.get_status_duration("last_active")
+        return duration.days if duration else None
+
+    @property
+    def days_since_frozen(self) -> Optional[int]:
+        """冻结天数"""
+        if not self.frozen_at:
+            return None
+        duration = self.get_status_duration("frozen")
+        return duration.days if duration else None
+
+    @property
+    def days_since_banned(self) -> Optional[int]:
+        """封禁天数"""
+        if not self.banned_at:
+            return None
+        duration = self.get_status_duration("banned")
+        return duration.days if duration else None
+
+    @property
+    def days_since_activated(self) -> Optional[int]:
+        """激活天数"""
+        if not self.activated_at:
+            return None
+        duration = self.get_status_duration("activated")
+        return duration.days if duration else None
+
+    # 状态时间戳便捷方法
+    def get_status_timestamp(self, status_type: str) -> Optional[datetime]:
+        """
+        获取状态对应的时间戳
+        :param status_type: 状态类型，可选值: activated, last_active, frozen, banned, closed
+        :return: 对应的时间戳或None
+        """
+        timestamps = {
+            "activated": self.activated_at,
+            "last_active": self.last_active_at,
+            "frozen": self.frozen_at,
+            "banned": self.banned_at,
+            "closed": self.closed_at,
+        }
+        return timestamps.get(status_type)
+
+    def get_all_status_timestamps(self) -> Dict[str, Optional[datetime]]:
+        """获取所有状态时间戳的字典"""
+        return {
+            "activated": self.activated_at,
+            "last_active": self.last_active_at,
+            "frozen": self.frozen_at,
+            "banned": self.banned_at,
+            "closed": self.closed_at,
+            "created": self.created_at,
+            "updated": self.updated_at,
+        }
+
+    def get_status_duration(self, status_type: str) -> Optional[timedelta]:
+        """
+        获取状态持续时长
+        :param status_type: 状态类型
+        :return: 持续时长或None
+        """
+        from azer_common.utils.time import utc_now
+
+        timestamp = self.get_status_timestamp(status_type)
+        if not timestamp:
+            return None
+
+        return utc_now() - timestamp
 
     # 用户偏好便捷方法
     def get_preference(self, key: str, default=None):
