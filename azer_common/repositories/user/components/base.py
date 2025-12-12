@@ -103,28 +103,6 @@ class UserBaseComponent(BaseComponent):
             return False
         return hasattr(user, 'is_system') and user.is_system
 
-    async def is_user_active(self, user_id: str) -> bool:
-        """
-        检查用户是否处于活跃状态（状态正常且无安全限制）
-        :param user_id: 用户ID
-        :return: 活跃返回True，否则False
-        """
-        user = await self.get_by_id(user_id)
-        if not user:
-            return False
-        return user.is_active
-
-    async def is_user_blocked(self, user_id: str) -> bool:
-        """
-        检查用户是否被限制（冻结/封禁等安全限制）
-        :param user_id: 用户ID
-        :return: 被限制返回True，否则False
-        """
-        user = await self.get_by_id(user_id)
-        if not user:
-            return False
-        return user.is_blocked
-
     async def get_display_name(self, user_id: str) -> Optional[str]:
         """
         获取用户显示名称（优先级：真实姓名 > 昵称 > 用户名）

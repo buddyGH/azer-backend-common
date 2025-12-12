@@ -1,4 +1,4 @@
-# azer_common/repositories/base.py
+# azer_common/repositories/base_repository.py
 from typing import TypeVar, Generic, Type, Optional, List, Dict, Any, Tuple, Union
 from tortoise.expressions import Q
 from tortoise.transactions import in_transaction
@@ -290,9 +290,3 @@ class BaseRepository(IRepository[T]):
         if hasattr(self.model, self.soft_delete_field):
             query = query.filter(**{self.soft_delete_field: False})
         return query
-
-    def filter_query(self, query, **filters):
-        """在现有查询上应用过滤条件"""
-        if hasattr(self.model, self.soft_delete_field):
-            filters[self.soft_delete_field] = False
-        return query.filter(**filters)
