@@ -48,7 +48,7 @@ class UserStatsComponent(BaseComponent):
         :param tenant_id: 租户ID
         :return: 状态统计字典
         """
-        query = self.model.filter(is_deleted=False)
+        query = self.query
 
         if tenant_id:
             query = query.filter(tenants__id=tenant_id)
@@ -304,10 +304,9 @@ class UserStatsComponent(BaseComponent):
         period_expr = RawSQL(f"strftime({sql_format}, created_at)")
 
         # 筛选指定时间段内创建的用户
-        query = self.model.filter(
+        query = self.model.objects.filter(
             created_at__gte=start_date,
-            created_at__lte=end_date,
-            is_deleted=False
+            created_at__lte=end_date
         )
 
         # 使用 annotate 和 values 进行分组统计

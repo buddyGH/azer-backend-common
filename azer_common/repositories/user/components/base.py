@@ -33,7 +33,7 @@ class UserBaseComponent(BaseComponent):
         :return: 包含认证凭证的用户实例/None
         """
         # 关联查询用户认证凭证（一对一关系）
-        user = await self.model.filter(id=user_id, is_deleted=False).select_related(
+        user = await self.model.objects.filter(id=user_id).select_related(
             "credential"  # 关联UserCredential模型（外键关联User）
         ).first()
         return user
@@ -258,9 +258,8 @@ class UserBaseComponent(BaseComponent):
                     update_fields.append("mobile")
                 else:
                     # 检查手机号是否已被其他用户占用
-                    exists = await self.model.filter(
+                    exists = await self.model.objects.filter(
                         mobile=mobile,
-                        is_deleted=False
                     ).exclude(id=user_id).exists()
                     if exists:
                         raise ValueError(f"手机号{mobile}已被其他用户使用")
@@ -274,9 +273,8 @@ class UserBaseComponent(BaseComponent):
                     update_fields.append("email")
                 else:
                     # 检查邮箱是否已被其他用户占用
-                    exists = await self.model.filter(
-                        email=email,
-                        is_deleted=False
+                    exists = await self.model.objects.filter(
+                        email=email
                     ).exclude(id=user_id).exists()
                     if exists:
                         raise ValueError(f"邮箱{email}已被其他用户使用")
@@ -324,9 +322,8 @@ class UserBaseComponent(BaseComponent):
                     user.identity_card = None
                     update_fields.append("identity_card")
                 else:
-                    exists = await self.model.filter(
+                    exists = await self.model.objects.filter(
                         identity_card=identity_card,
-                        is_deleted=False
                     ).exclude(id=user_id).exists()
                     if exists:
                         raise ValueError(f"身份证号{identity_card}已被其他用户使用")

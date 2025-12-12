@@ -4,7 +4,6 @@ from azer_common.repositories.base_repository import BaseRepository
 from .components import (
     UserBaseComponent,
     UserStatusComponent,
-    UserSearchComponent,
     UserTenantComponent,
     UserRoleComponent,
     UserStatsComponent
@@ -18,7 +17,6 @@ class UserRepository(BaseRepository[User]):
         super().__init__(User)
         self.default_search_fields = ['username', 'nick_name', 'real_name', 'email', 'mobile']
         self._base = UserBaseComponent(self)
-        self._searcher = UserSearchComponent(self)
         self._status = UserStatusComponent(self)
         self._tenant = UserTenantComponent(self)
         self._role = UserRoleComponent(self)
@@ -27,13 +25,8 @@ class UserRepository(BaseRepository[User]):
     # ========== 属性路由 ==========
     @property
     def base(self) -> UserBaseComponent:
-        """搜索查询操作"""
+        """基础查询操作"""
         return self._base
-
-    @property
-    def searcher(self) -> UserSearchComponent:
-        """搜索查询操作"""
-        return self._searcher
 
     @property
     def status(self) -> UserStatusComponent:

@@ -23,7 +23,7 @@ class UserTenantComponent(BaseComponent):
         :return: 租户列表、总数量
         """
         # 先获取用户-租户关联关系
-        query = TenantUser.filter(user_id=user_id, is_deleted=False)
+        query = TenantUser.objects.filter(user_id=user_id)
         if is_valid:
             query = query.filter(is_assigned=True).exclude(
                 expires_at__lte=utc_now()
@@ -49,10 +49,9 @@ class UserTenantComponent(BaseComponent):
         :param user_id: 用户ID
         :return: 主租户实例/None
         """
-        tenant_user = await TenantUser.filter(
+        tenant_user = await TenantUser.objects.filter(
             user_id=user_id,
             is_primary=True,
-            is_deleted=False,
             is_assigned=True
         ).exclude(expires_at__lte=utc_now()).select_related("tenant").first()
 
@@ -72,10 +71,9 @@ class UserTenantComponent(BaseComponent):
         """
         async with self.transaction:
             # 1. 校验用户和租户关联关系是否存在且有效
-            tenant_user = await TenantUser.filter(
+            tenant_user = await TenantUser.objects.filter(
                 user_id=user_id,
                 tenant_id=tenant_id,
-                is_deleted=False,
                 is_assigned=True
             ).exclude(expires_at__lte=utc_now()).first()
 
@@ -83,10 +81,9 @@ class UserTenantComponent(BaseComponent):
                 raise ValueError(f"用户{user_id}未关联到租户{tenant_id}或关联已失效")
 
             # 2. 取消原主租户
-            await TenantUser.filter(
+            await TenantUser.objects.filter(
                 user_id=user_id,
                 is_primary=True,
-                is_deleted=False
             ).update(is_primary=False)
 
             # 3. 设置新主租户

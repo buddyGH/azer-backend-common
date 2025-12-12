@@ -29,10 +29,7 @@ class UserStatusComponent(BaseComponent):
         :param order_by: 排序字段
         :return: (用户列表, 总数量)
         """
-        query = self.model.filter(
-            status=status,
-            is_deleted=False
-        )
+        query = self.model.objects.filter(status=status)
 
         if not include_blocked:
             query = query.filter(security_status__isnull=True)
@@ -63,10 +60,7 @@ class UserStatusComponent(BaseComponent):
         :param order_by: 排序字段
         :return: (用户列表, 总数量)
         """
-        query = self.model.filter(
-            security_status=security_status,
-            is_deleted=False
-        )
+        query = self.model.objects.filter(security_status=security_status)
 
         if tenant_id:
             query = query.filter(tenants__id=tenant_id)
@@ -147,7 +141,7 @@ class UserStatusComponent(BaseComponent):
         :return: (是否成功, 用户对象, 错误信息)
         """
         async with self.transaction:
-            user = await self.model.filter(id=user_id, is_deleted=False).first()
+            user = await self.get_by_id(id=user_id)
             if not user:
                 return False, None, "用户不存在"
 
@@ -199,7 +193,7 @@ class UserStatusComponent(BaseComponent):
         :return: (是否成功, 用户对象, 错误信息)
         """
         async with self.transaction:
-            user = await self.model.filter(id=user_id, is_deleted=False).first()
+            user = await self.get_by_id(id=user_id)
             if not user:
                 return False, None, "用户不存在"
 
@@ -252,7 +246,7 @@ class UserStatusComponent(BaseComponent):
         :return: (是否成功, 用户对象, 错误信息)
         """
         async with self.transaction:
-            user = await self.model.filter(id=user_id, is_deleted=False).first()
+            user = await self.get_by_id(id=user_id)
             if not user:
                 return False, None, "用户不存在"
 
@@ -298,7 +292,7 @@ class UserStatusComponent(BaseComponent):
         :return: (是否成功, 用户对象, 错误信息)
         """
         async with self.transaction:
-            user = await self.model.filter(id=user_id, is_deleted=False).first()
+            user = await self.get_by_id(id=user_id)
             if not user:
                 return False, None, "用户不存在"
 
@@ -342,7 +336,7 @@ class UserStatusComponent(BaseComponent):
         :return: (是否成功, 用户对象, 错误信息)
         """
         async with self.transaction:
-            user = await self.model.filter(id=user_id, is_deleted=False).first()
+            user = await self.get_by_id(id=user_id)
             if not user:
                 return False, None, "用户不存在"
 
@@ -386,7 +380,7 @@ class UserStatusComponent(BaseComponent):
         :return: (是否成功, 用户对象, 错误信息)
         """
         async with self.transaction:
-            user = await self.model.filter(id=user_id, is_deleted=False).first()
+            user = await self.get_by_id(id=user_id)
             if not user:
                 return False, None, "用户不存在"
 
@@ -426,7 +420,7 @@ class UserStatusComponent(BaseComponent):
         :return: 是否成功
         """
         async with self.transaction:
-            user = await self.model.filter(id=user_id, is_deleted=False).first()
+            user = await self.get_by_id(id=user_id)
             if not user:
                 return False
 
@@ -459,7 +453,7 @@ class UserStatusComponent(BaseComponent):
         :return: (是否成功, 用户对象, 错误信息)
         """
         async with self.transaction:
-            user = await self.model.filter(id=user_id, is_deleted=False).first()
+            user = await self.get_by_id(id=user_id)
             if not user:
                 return False, None, "用户不存在"
 

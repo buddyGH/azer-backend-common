@@ -28,10 +28,9 @@ class UserRoleComponent(BaseComponent):
         :return: 角色列表、总数量
         """
         # 构建基础查询
-        query = UserRole.filter(
+        query = UserRole.objects.filter(
             user_id=user_id,
             tenant_id=tenant_id,
-            is_deleted=False
         )
 
         # 过滤有效角色关联
@@ -77,31 +76,28 @@ class UserRoleComponent(BaseComponent):
                 raise ValueError(f"用户不存在: {user_id}")
 
             # 2. 校验角色有效性及租户一致性
-            role = await Role.filter(
+            role = await Role.objects.filter(
                 id=role_id,
                 tenant_id=tenant_id,
-                is_deleted=False,
                 is_enabled=True
             ).first()
             if not role:
                 raise ValueError(f"租户{tenant_id}下的角色{role_id}不存在或已禁用")
 
             # 3. 校验用户-租户关联有效性
-            tenant_user = await TenantUser.filter(
+            tenant_user = await TenantUser.objects.filter(
                 user_id=user_id,
                 tenant_id=tenant_id,
-                is_deleted=False,
                 is_assigned=True
             ).first()
             if not tenant_user:
                 raise ValueError(f"用户{user_id}未关联到租户{tenant_id}")
 
             # 4. 创建/更新角色关联
-            user_role, created = await UserRole.get_or_create(
+            user_role, created = await UserRole.objects.get_or_create(
                 user_id=user_id,
                 role_id=role_id,
                 tenant_id=tenant_id,
-                is_deleted=False,
                 defaults={
                     "is_assigned": True,
                     "expires_at": expires_at,
@@ -134,11 +130,10 @@ class UserRoleComponent(BaseComponent):
         :return: 操作成功返回True
         """
         async with self.transaction:
-            user_role = await UserRole.filter(
+            user_role = await UserRole.objects.filter(
                 user_id=user_id,
                 role_id=role_id,
                 tenant_id=tenant_id,
-                is_deleted=False
             ).first()
 
             if not user_role:
@@ -177,10 +172,9 @@ class UserRoleComponent(BaseComponent):
                 raise ValueError(f"用户不存在: {user_id}")
 
             # 2. 校验用户-租户关联
-            tenant_user = await TenantUser.filter(
+            tenant_user = await TenantUser.objects.filter(
                 user_id=user_id,
                 tenant_id=tenant_id,
-                is_deleted=False,
                 is_assigned=True
             ).first()
             if not tenant_user:
@@ -188,10 +182,9 @@ class UserRoleComponent(BaseComponent):
 
             # 3. 批量校验角色有效性
             role_ids = [data.get("role_id") for data in role_data_list if data.get("role_id")]
-            valid_roles = await Role.filter(
+            valid_roles = await Role.objects.filter(
                 id__in=role_ids,
                 tenant_id=tenant_id,
-                is_deleted=False,
                 is_enabled=True
             ).values_list("id", flat=True)
             valid_role_ids = set(valid_roles)
@@ -242,11 +235,10 @@ class UserRoleComponent(BaseComponent):
         async with self.transaction:
             if soft_delete:
                 # 批量软删除
-                result = await UserRole.filter(
+                result = await UserRole.objects.filter(
                     user_id=user_id,
                     tenant_id=tenant_id,
                     role_id__in=role_ids,
-                    is_deleted=False
                 ).update(
                     is_assigned=False,
                     is_deleted=True,
