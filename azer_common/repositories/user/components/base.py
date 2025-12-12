@@ -1,10 +1,7 @@
 # azer_common/repositories/user/components/base.py
 from datetime import date
 from typing import Any, Dict, Optional, Tuple
-
 from tortoise.expressions import Q
-from tortoise.transactions import in_transaction
-
 from azer_common.models.user.model import User
 from azer_common.repositories.base_component import BaseComponent
 
@@ -135,7 +132,7 @@ class UserBaseComponent(BaseComponent):
         :param avatar_url: 头像URL（None/空字符串表示清空）
         :return: 更新后的用户实例/None
         """
-        async with in_transaction():
+        async with self.transaction:
             user = await self.get_by_id(user_id)
             if not user:
                 return None
@@ -160,7 +157,7 @@ class UserBaseComponent(BaseComponent):
         :param nick_name: 新昵称（非空）
         :return: 更新后的用户实例/None
         """
-        async with in_transaction():
+        async with self.transaction:
             user = await self.get_by_id(user_id)
             if not user:
                 return None
@@ -193,7 +190,7 @@ class UserBaseComponent(BaseComponent):
         :param sex: 性别（需符合SexEnum枚举值）
         :return: 更新后的用户实例/None
         """
-        async with in_transaction():
+        async with self.transaction:
             user = await self.get_by_id(user_id)
             if not user:
                 return None
@@ -244,7 +241,7 @@ class UserBaseComponent(BaseComponent):
         :param email: 邮箱
         :return: 更新后的用户实例/None
         """
-        async with in_transaction():
+        async with self.transaction:
             user = await self.get_by_id(user_id)
             if not user:
                 return None
@@ -306,7 +303,7 @@ class UserBaseComponent(BaseComponent):
         :param birth_date: 出生日期
         :return: 更新后的用户实例/None
         """
-        async with in_transaction():
+        async with self.transaction:
             user = await self.get_by_id(user_id)
             if not user:
                 return None
@@ -359,7 +356,7 @@ class UserBaseComponent(BaseComponent):
         :param merge: 是否合并现有设置（True: 合并，False: 覆盖）
         :return: 更新后的用户实例/None
         """
-        async with in_transaction():
+        async with self.transaction:
             user = await self.get_by_id(user_id)
             if not user:
                 return None
