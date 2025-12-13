@@ -29,13 +29,13 @@ async def hash_user_credential_password(_sender, instance: UserCredential, _usin
         password_updated = True
 
     # 5. 无论明文/哈希，只要密码变更就更新附属字段
-    instance.password_changed_at = utc_now()
+    instance.last_password_changed_at = utc_now()
     instance.failed_login_attempts = 0
     instance.failed_login_at = None
 
     # 6. 更新update_fields（确保字段被保存）
     if update_fields is not None:
-        fields_to_add = ["password_changed_at", "failed_login_attempts"]
+        fields_to_add = ["last_password_changed_at", "failed_login_attempts"]
         if password_updated:
             fields_to_add.append("password")  # 只有哈希转换时才加password
         for field in fields_to_add:

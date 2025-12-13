@@ -31,7 +31,7 @@ class UserCredential(BaseModel):
 
     # 认证状态
     failed_login_attempts = fields.IntField(default=0, description="连续登录失败次数")
-    password_changed_at = fields.DatetimeField(null=True, description="密码最后修改时间")
+    last_password_changed_at = fields.DatetimeField(null=True, description="密码最后修改时间")
     failed_login_at = fields.DatetimeField(null=True, description="登录失败最后时间")
     password_expires_at = fields.DatetimeField(null=True, description="密码过期时间")
 
