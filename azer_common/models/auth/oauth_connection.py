@@ -1,5 +1,4 @@
 # azer_common/models/auth/oauth_connection.py
-# azer_common/models/auth/oauth_connection.py
 from tortoise import fields
 from azer_common.models.base import BaseModel
 from azer_common.utils.time import utc_now
@@ -29,7 +28,6 @@ class OAuthConnection(BaseModel):
 
     is_active = fields.BooleanField(default=True, description="是否活跃连接")
 
-    # 安全相关
     revoked_at = fields.DatetimeField(null=True, description="撤销连接时间")
 
     revoke_reason = fields.CharField(max_length=200, null=True, description="撤销原因")
