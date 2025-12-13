@@ -4,6 +4,7 @@ from argon2 import PasswordHasher
 from async_property import async_property
 from tortoise import fields
 from azer_common.models.auth.oauth_connection import OAuthConnection
+from azer_common.models.auth.password_history import PasswordHistory
 from azer_common.models.base import BaseModel
 from azer_common.models.enums.base import MFATypeEnum
 from azer_common.utils.time import add_days, utc_now
@@ -19,9 +20,11 @@ class UserCredential(BaseModel):
     """用户认证表 - 存储认证相关信息"""
 
     # 关联用户
-    user = fields.OneToOneField("models.User", related_name="auth", on_delete=fields.CASCADE, description="关联用户")
+    user = fields.OneToOneField(
+        "models.User", related_name="credential", on_delete=fields.CASCADE, description="关联用户"
+    )
 
-    # 认证凭证
+    # 用户密码
     password = fields.CharField(
         max_length=200,
         description="密码（argon2 哈希存储）",
@@ -34,6 +37,9 @@ class UserCredential(BaseModel):
     last_password_changed_at = fields.DatetimeField(null=True, description="密码最后修改时间")
     failed_login_at = fields.DatetimeField(null=True, description="登录失败最后时间")
     password_expires_at = fields.DatetimeField(null=True, description="密码过期时间")
+
+    # 密码历史
+    password_histories: fields.ReverseRelation[PasswordHistory]
 
     # MFA认证
     mfa_enabled = fields.BooleanField(default=False, description="是否启用MFA")
@@ -71,7 +77,7 @@ class UserCredential(BaseModel):
             "user_id",
             # 认证状态（非敏感）
             "failed_login_attempts",
-            "password_changed_at",
+            "last_password_changed_at",
             "password_expires_at",
             # MFA 状态（不含密钥）
             "mfa_enabled",
@@ -114,9 +120,9 @@ class UserCredential(BaseModel):
     @property
     def days_since_password_change(self) -> Optional[int]:
         """获取密码修改天数（如果未设置返回None）"""
-        if not self.password_changed_at:
+        if not self.last_password_changed_at:
             return None
-        delta = utc_now() - self.password_changed_at
+        delta = utc_now() - self.last_password_changed_at
         return delta.days
 
     @property
@@ -135,6 +141,21 @@ class UserCredential(BaseModel):
         """
         return await self.oauth_connections.filter(is_active=True)
 
+    @async_property
+    async def all_password_histories(self) -> List[PasswordHistory]:
+        """
+        异步属性：获取当前用户所有密码历史（按创建时间倒序）
+        调用：await user_cred.all_password_histories
+        """
+        return await self.password_histories.order_by("-created_at").all()
+
+    @async_property
+    async def recent_password_histories(self) -> List[PasswordHistory]:
+        """
+        异步属性：获取当前用户最近5条密码历史（常用作密码复用检查）
+        """
+        return await self.password_histories.order_by("-created_at").limit(5).all()
+
     # ----- 密码相关方法 -----
     def set_password(self, password: str, password_expire_days: Optional[int] = None):
         """设置密码
@@ -145,7 +166,7 @@ class UserCredential(BaseModel):
         """
         validate_password(password)
         self.password = PH_SINGLETON.hash(password)
-        self.password_changed_at = utc_now()
+        self.last_password_changed_at = utc_now()
         self.failed_login_attempts = 0  # 重置失败计数
         self.failed_login_at = None
 
@@ -199,7 +220,7 @@ class UserCredential(BaseModel):
             "mfa_enabled": self.mfa_enabled,
             "mfa_type": self.mfa_type.value if self.mfa_type else None,
             "last_login_at": self.last_login_at,
-            "password_changed_at": self.password_changed_at,
+            "password_changed_at": self.last_password_changed_at,
             "email_verified": self.is_email_verified,
             "mobile_verified": self.is_mobile_verified,
             "failed_login_attempts": self.failed_login_attempts,

@@ -1,6 +1,8 @@
 import re
 from tortoise import fields
 from azer_common.models.base import BaseModel
+from azer_common.models.role.model import Role
+from azer_common.models.user.model import User
 from azer_common.utils.time import utc_now
 
 
@@ -18,6 +20,9 @@ class Tenant(BaseModel):
     is_enabled = fields.BooleanField(default=True, description="租户是否启用（禁用后租户下所有资源失效）")
     is_system = fields.BooleanField(default=False, description="是否系统内置租户（不可删除、禁用、设置过期时间）")
     expired_at = fields.DatetimeField(null=True, description="租户过期时间（null表示永久有效）")
+
+    # 反向关联字段
+    roles: fields.ReverseRelation[Role]
 
     # 扩展信息字段
     contact = fields.CharField(max_length=50, null=True, description="租户联系人")

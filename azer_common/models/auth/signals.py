@@ -41,3 +41,6 @@ async def hash_user_credential_password(_sender, instance: UserCredential, _usin
         for field in fields_to_add:
             if field not in update_fields:
                 update_fields.append(field)
+
+
+# TODO: 触发redis模块相关内容

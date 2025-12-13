@@ -38,7 +38,7 @@ class PasswordHistory(BaseModel):
         table = "azer_password_history"
         table_description = "用户认证凭证的密码变更历史表"
         indexes = [
-            ("credential_id", "-created_at"),
+            ("credential_id", "created_at"),
             ("created_at",),
         ]
 

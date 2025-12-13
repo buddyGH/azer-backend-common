@@ -1,7 +1,9 @@
 # azer_common/models/user/model.py
 from datetime import datetime, timedelta
 from typing import Dict, Optional
+from async_property import async_property
 from tortoise import fields
+from azer_common.models.auth.model import UserCredential
 from azer_common.models.base import BaseModel
 from azer_common.models.enums.base import SexEnum, UserLifecycleStatus, UserSecurityStatus
 from azer_common.utils.time import today
@@ -21,6 +23,9 @@ class User(BaseModel):
     username = fields.CharField(
         max_length=30, unique=True, validators=[validate_username], description="用户名", index=True
     )
+
+    # 用户认证凭证
+    credential: fields.ReverseRelation[UserCredential]
 
     # 账户状态
     status = fields.CharEnumField(
@@ -127,6 +132,17 @@ class User(BaseModel):
             return None
         duration = self.get_status_duration("activated")
         return duration.days if duration else None
+
+    @async_property
+    async def credential(self) -> Optional[UserCredential]:
+        """
+        异步属性：获取当前用户关联的认证凭证（OneToOne关联）
+        调用：await user.credential
+        """
+        try:
+            return await self.credential.first()
+        except Exception:
+            return None
 
     # 状态时间戳便捷方法
     def get_status_timestamp(self, status_type: str) -> Optional[datetime]:
