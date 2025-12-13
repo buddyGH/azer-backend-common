@@ -30,6 +30,7 @@ class UserCredential(BaseModel):
     # 认证状态
     failed_login_attempts = fields.IntField(default=0, description="连续登录失败次数")
     password_changed_at = fields.DatetimeField(null=True, description="密码最后修改时间")
+    failed_login_at = fields.DatetimeField(null=True, description="登录失败最后时间")
 
     # MFA认证
     mfa_enabled = fields.BooleanField(default=False, description="是否启用MFA")
@@ -140,6 +141,7 @@ class UserCredential(BaseModel):
         self.password = PH_SINGLETON.hash(password)
         self.password_changed_at = utc_now()
         self.failed_login_attempts = 0  # 重置失败计数
+        self.failed_login_at = None
 
         # 设置密码过期时间
         if password_expire_days is not None:
@@ -194,6 +196,7 @@ class UserCredential(BaseModel):
             "email_verified": self.is_email_verified,
             "mobile_verified": self.is_mobile_verified,
             "failed_login_attempts": self.failed_login_attempts,
+            "failed_login_at": self.failed_login_at,
             "password_expired": self.is_password_expired(),
         }
 
