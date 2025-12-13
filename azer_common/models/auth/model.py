@@ -1,12 +1,14 @@
 # azer_common/models/auth/model.py
 import argon2
 from argon2 import PasswordHasher
+from async_property import async_property
 from tortoise import fields
+from azer_common.models.auth.oauth_connection import OAuthConnection
 from azer_common.models.base import BaseModel
 from azer_common.models.enums.base import MFATypeEnum
 from azer_common.utils.time import add_days, utc_now
 from azer_common.utils.validators import validate_password
-from typing import Optional
+from typing import List, Optional
 
 
 # 复用密码哈希单例
@@ -31,6 +33,7 @@ class UserCredential(BaseModel):
     failed_login_attempts = fields.IntField(default=0, description="连续登录失败次数")
     password_changed_at = fields.DatetimeField(null=True, description="密码最后修改时间")
     failed_login_at = fields.DatetimeField(null=True, description="登录失败最后时间")
+    password_expires_at = fields.DatetimeField(null=True, description="密码过期时间")
 
     # MFA认证
     mfa_enabled = fields.BooleanField(default=False, description="是否启用MFA")
@@ -39,9 +42,8 @@ class UserCredential(BaseModel):
     mfa_type = fields.CharEnumField(MFATypeEnum, default=MFATypeEnum.NONE, description="MFA认证类型")
     mfa_verified_at = fields.DatetimeField(null=True, description="MFA最后验证时间")
 
-    # 第三方登录（保留基本信息，token存Redis）
-    oauth_platform = fields.CharField(max_length=20, null=True, description="第三方登录平台")
-    oauth_uid = fields.CharField(max_length=100, null=True, index=True, description="第三方平台唯一ID")
+    # OAuth
+    oauth_connections: fields.ReverseRelation[OAuthConnection]
 
     # 验证状态
     email_verified_at = fields.DatetimeField(null=True, description="邮箱验证时间")
@@ -55,16 +57,12 @@ class UserCredential(BaseModel):
     registration_ip = fields.CharField(max_length=45, null=True, description="注册IP")
     registration_source = fields.CharField(max_length=50, null=True, description="注册来源")
 
-    # 安全相关
-    password_expires_at = fields.DatetimeField(null=True, description="密码过期时间")
+    # 设备管理
+    trusted_devices = fields.JSONField(null=True, description="可信设备列表", default=dict)
 
     class Meta:
         table = "azer_user_credential"
         table_description = "用户认证表"
-        indexes = [
-            ("oauth_platform", "oauth_uid"),  # 复合索引
-        ]
-        unique_together = [("oauth_platform", "oauth_uid")]
 
     class PydanticMeta:
         include = {
@@ -129,7 +127,15 @@ class UserCredential(BaseModel):
         delta = utc_now() - self.last_login_at
         return delta.days
 
-    # 密码相关方法
+    @async_property
+    async def active_oauth_connections(self) -> List[OAuthConnection]:
+        """
+        异步属性：获取当前用户所有活跃的OAuth连接
+        调用方式：await user_cred.active_oauth_connections
+        """
+        return await self.oauth_connections.filter(is_active=True)
+
+    # ----- 密码相关方法 -----
     def set_password(self, password: str, password_expire_days: Optional[int] = None):
         """设置密码
 
@@ -165,6 +171,7 @@ class UserCredential(BaseModel):
             return False
         return utc_now() > self.password_expires_at
 
+    # ----- 信息聚合方法 -----
     def get_mfa_info(self) -> dict:
         """获取MFA相关信息"""
         return {
