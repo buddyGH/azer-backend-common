@@ -41,7 +41,7 @@ class BaseAuditLog(BaseModel):
 
     # 核心约束：审计日志不可修改/删除
     async def save(self, *args, **kwargs):
-        if self.id:
+        if self._saved_in_db:
             raise PermissionError("审计日志不允许修改")
         await super().save(*args, **kwargs)
 
