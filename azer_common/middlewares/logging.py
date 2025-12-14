@@ -61,9 +61,7 @@ def get_effective_log_path(config_path: Optional[str], log_type: str) -> str:
 
 
 # 公共日志配置函数
-def setup_logger(
-    log_name: str, log_config: LoggingConfig, log_file_path: Optional[str] = None  # 注入通用配置（核心解耦点）
-) -> logging.Logger:
+def setup_logger(log_name: str, log_config: LoggingConfig, log_file_path: Optional[str] = None) -> logging.Logger:
     """
     设置日志记录器，动态决定日志输出到文件或标准输出
     :param log_name: 日志记录器名称
