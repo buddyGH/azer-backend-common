@@ -5,7 +5,7 @@ from fastapi import HTTPException, Request, status
 from tortoise.exceptions import DoesNotExist
 from azer_common.models.user.model import User
 from azer_common.utils.device_info import DeviceFingerprintUtil
-from azer_common.config.base import JWTConfig
+from azer_common.configs.base import JWTConfig
 
 
 class CommonJWTService:

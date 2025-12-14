@@ -10,7 +10,7 @@ from urllib.parse import parse_qs
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.types import ASGIApp
-from azer_common.config.base import LoggingConfig
+from azer_common.configs.base import LoggingConfig
 
 
 def get_microservice_default_log_path(log_type: str) -> str:

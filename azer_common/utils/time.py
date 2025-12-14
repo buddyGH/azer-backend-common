@@ -3,7 +3,7 @@ from typing import Optional, Union
 
 # 定义UTC时区常量
 UTC = timezone.utc
-# 本地时区（可根据服务部署环境调整，或通过配置中心注入）
+# TODO: 本地时区（可根据服务部署环境调整，或通过配置中心注入）
 LOCAL_TZ = datetime.now(timezone.utc).astimezone().tzinfo
 
 

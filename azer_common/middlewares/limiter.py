@@ -3,7 +3,7 @@ from typing import Callable, Optional, Awaitable
 from fastapi import HTTPException, Request, Response
 from fastapi_limiter.depends import RateLimiter
 from starlette.status import HTTP_429_TOO_MANY_REQUESTS
-from azer_common.config.base import RateLimiterConfig
+from azer_common.configs.base import RateLimiterConfig
 
 
 # 默认的 identifier 函数，基于客户端 IP 地址
