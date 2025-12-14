@@ -6,7 +6,7 @@ from tortoise import fields
 from azer_common.models.auth.model import UserCredential
 from azer_common.models.base import BaseModel
 from azer_common.models.enums.base import SexEnum, UserLifecycleStatus, UserSecurityStatus
-from azer_common.utils.time import today
+from azer_common.utils.time import today_utc
 from azer_common.utils.validators import (
     validate_url,
     validate_username,
@@ -96,7 +96,7 @@ class User(BaseModel):
         """计算年龄"""
         if not self.birth_date:
             return None
-        _today = today()
+        _today = today_utc()
         return (
             _today.year
             - self.birth_date.year

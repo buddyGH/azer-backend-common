@@ -1,7 +1,7 @@
 from typing import Optional
 import redis.asyncio as aioredis
 from redis.asyncio.client import Redis
-from azer_common.config.base import RedisConfig
+from azer_common.configs.base import RedisConfig
 
 
 class RedisClient:
@@ -9,7 +9,7 @@ class RedisClient:
         """
         Redis 客户端类，用于与 Redis 服务器进行交互。
         初始化时，self.master 和 self.replica 设置为 None，表示连接尚未建立。
-        config: Redis主从配置（公共包定义的通用模型）
+        configs: Redis主从配置（公共包定义的通用模型）
         """
         self.master: Optional[Redis] = None
         self.replica: Optional[Redis] = None
@@ -21,7 +21,7 @@ class RedisClient:
         使用来自 settings 的 Redis 主从配置信息，包括用户、密码、主机、端口和数据库。
         """
         if self.config is None:
-            raise RuntimeError("Redis config not injected!")
+            raise RuntimeError("Redis configs not injected!")
 
         master_url = f"redis://{self.config.master.host}:{self.config.master.port}"
         replica_url = f"redis://{self.config.replica.host}:{self.config.replica.port}"

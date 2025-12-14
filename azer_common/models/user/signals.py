@@ -14,7 +14,6 @@ async def create_user_auth(_sender, instance: User, created: bool, _using_db, _u
 @pre_save(User)
 async def sync_user_email_mobile(_sender, instance: User, _using_db, update_fields):
     """当用户的email或mobile字段发生变更时，重置对应的验证状态"""
-    # 核心修正：pre_save无created参数，通过pk是否存在判断是否是更新操作
     # pk存在 = 更新，pk不存在 = 创建
     is_create = instance.pk is None
     if is_create or not update_fields:  # 仅处理更新操作，跳过创建
@@ -24,8 +23,8 @@ async def sync_user_email_mobile(_sender, instance: User, _using_db, update_fiel
     if not auth:
         return
 
-    # 获取更新前的旧数据（all_objects避免软删除过滤）
-    old_instance = await User.all_objects.filter(id=instance.id).first()
+    # 获取更新前的旧数据（非objects避免软删除过滤）
+    old_instance = await User.filter(id=instance.id).first()
     if not old_instance:
         return
 

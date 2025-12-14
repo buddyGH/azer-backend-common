@@ -1,8 +1,10 @@
 import re
+from typing import List
+
+from async_property import async_property
 from tortoise import fields
 from azer_common.models.base import BaseModel
 from azer_common.models.role.model import Role
-from azer_common.models.user.model import User
 from azer_common.utils.time import utc_now
 
 
@@ -69,7 +71,7 @@ class Tenant(BaseModel):
             raise ValueError(f"租户过期时间不能早于当前时间：{self.expired_at}")
 
         # 编码唯一性校验
-        query = self.__class__.objects.filter(code=self.code)
+        query = self.__class__.all_objects.filter(code=self.code)
         if self.id:
             query = query.exclude(id=self.id)
         existing_tenant = await query.first()
@@ -97,3 +99,19 @@ class Tenant(BaseModel):
             raise ValueError("系统内置租户不允许禁用")
         self.is_enabled = False
         await self.save(update_fields=["is_enabled", "updated_at"])
+
+    @async_property
+    async def enabled_roles(self) -> List[Role]:
+        """
+        异步属性：获取当前租户所有启用的角色
+        调用方式：await tenant.enabled_roles
+        """
+        return await self.roles.filter(is_enabled=True)
+
+    @async_property
+    async def all_roles(self) -> List[Role]:
+        """
+        异步属性：获取当前租户所有角色
+        调用：await tenant.all_roles
+        """
+        return await self.roles.all()
