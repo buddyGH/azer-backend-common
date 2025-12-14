@@ -1,6 +1,7 @@
 import re
 from tortoise import fields
 from azer_common.models.base import BaseModel
+from azer_common.utils.validators import validate_role_code
 
 
 class Role(BaseModel):
@@ -8,7 +9,9 @@ class Role(BaseModel):
 
     # 核心标识字段
     code = fields.CharField(
-        max_length=50, description="角色编码（租户内唯一，大写字母/数字/下划线，以字母/下划线开头）"
+        max_length=50,
+        validators=[validate_role_code],
+        description="角色编码（租户内唯一，大写字母/数字/下划线，以字母/下划线开头）",
     )
     name = fields.CharField(max_length=50, description="角色显示名称")
     role_type = fields.CharField(
@@ -86,8 +89,7 @@ class Role(BaseModel):
             raise ValueError("角色必须归属具体租户（tenant_id 不能为空）")
 
         # 编码格式校验
-        if not re.match(r"^[A-Z_][A-Z0-9_]{0,49}$", self.code):
-            raise ValueError("角色编码格式错误：必须以大写字母/下划线开头，仅包含大写字母、数字、下划线，长度1-50")
+        validate_role_code(self.code)
 
         # 自引用校验
         if self.parent_id == self.id:

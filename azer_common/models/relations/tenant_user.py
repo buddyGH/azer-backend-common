@@ -52,14 +52,14 @@ class TenantUser(BaseModel):
 
     async def validate(self):
         """验证租户用户关联数据合法性"""
-        # 时间逻辑校验
-        now = utc_now()
-        if self.expires_at and self.expires_at <= now:
-            raise ValueError(f"过期时间({self.expires_at})不能早于当前时间({now})")
-
         # 主租户状态校验
+        now = utc_now()
         if self.is_primary and (not self.is_assigned or (self.expires_at and self.expires_at <= now)):
             raise ValueError("已过期/未分配的租户关联不能设为主租户")
+
+        # 时间逻辑校验
+        if self.expires_at and self.expires_at <= now:
+            raise ValueError(f"过期时间({self.expires_at})不能早于当前时间({now})")
 
     async def soft_delete(self):
         """软删除关联关系，同步取消主租户标记和分配状态"""

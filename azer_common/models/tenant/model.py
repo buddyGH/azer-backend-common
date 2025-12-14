@@ -6,6 +6,7 @@ from tortoise import fields
 from azer_common.models.base import BaseModel
 from azer_common.models.role.model import Role
 from azer_common.utils.time import utc_now
+from azer_common.utils.validators import validate_tenant_code
 
 
 class Tenant(BaseModel):
@@ -13,7 +14,10 @@ class Tenant(BaseModel):
 
     # 核心标识字段
     code = fields.CharField(
-        max_length=64, unique=True, description="租户编码（全局唯一，小写字母/数字/下划线/中划线，以字母开头）"
+        max_length=64,
+        unique=True,
+        validators=[validate_tenant_code],
+        description="租户编码（全局唯一，小写字母/数字/下划线/中划线，以字母开头）",
     )
     name = fields.CharField(max_length=100, description="租户名称")
     tenant_type = fields.CharField(max_length=32, default="normal", description="租户类型（业务自定义分类）")
@@ -60,11 +64,7 @@ class Tenant(BaseModel):
                 raise ValueError("系统内置租户不允许禁用（is_enabled必须为True）")
 
         # 编码非空+格式校验
-        if not self.code:
-            raise ValueError("租户编码（code）不能为空")
-        code_pattern = r"^[a-z][a-z0-9_\-]{0,63}$"
-        if not re.match(code_pattern, self.code):
-            raise ValueError("租户编码格式错误：必须以小写字母开头，仅包含小写字母、数字、下划线、中划线，长度1-64")
+        validate_tenant_code(self.code)
 
         # 过期时间校验
         if self.expired_at is not None and self.expired_at <= utc_now():

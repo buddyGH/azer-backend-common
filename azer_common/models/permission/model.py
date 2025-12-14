@@ -81,13 +81,10 @@ class Permission(BaseModel):
             raise ValueError("系统内置权限必须为全局权限（tenant_id需为空）")
 
         # 编码格式校验
-        if not re.match(r"^[a-z_][a-z0-9_:]{0,99}$", self.code):
-            raise ValueError(
-                "权限编码格式错误：必须以小写字母/下划线开头，仅包含小写字母、数字、下划线、冒号，长度1-100"
-            )
+        validate_permission_code(self.code)
 
         # 唯一性校验
-        query = self.__class__.objects.filter(code=self.code, is_deleted=False)
+        query = self.__class__.all_objects.filter(code=self.code, is_deleted=False)
         if self.tenant_id is None:
             query = query.filter(tenant_id__isnull=True)
         else:
