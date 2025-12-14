@@ -41,6 +41,7 @@ class PasswordHistory(BaseModel):
             ("credential_id", "created_at"),
             ("created_at",),
         ]
+        ordering = ["-created_at"]
 
     def __str__(self) -> str:
         return f"PasswordHistory for Credential#{self.credential_id} at {self.created_at}"

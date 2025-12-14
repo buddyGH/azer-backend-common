@@ -27,6 +27,8 @@ def validate_mobile(value: str):
 # 验证密码格式
 def validate_password(value: str):
     """密码格式验证：8-64位，必须包含字母和数字"""
+    if not value or value.strip() == "":
+        raise ValueError("密码不能为空")
     if not re.match(r"^(?=.*[a-zA-Z])(?=.*\d).{8,64}$", value):
         raise ValueError("密码格式无效，必须包含字母和数字，长度为8到64个字符。")
 
