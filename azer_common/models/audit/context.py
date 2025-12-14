@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 @dataclass
 class AuditContext:
-    """通用审计上下文（标准化）"""
+    """通用审计上下文"""
 
     business_type: str  # 业务类型（如role_permission）
     operation_type: str  # 操作类型（create/update/delete）
