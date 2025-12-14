@@ -1,5 +1,4 @@
 # azer_common/models/audit/base.py
-# azer_common/models/audit/base.py
 from typing import Any, Dict
 from tortoise import fields
 from azer_common.models.base import BaseModel
