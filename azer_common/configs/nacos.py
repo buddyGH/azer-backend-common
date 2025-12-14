@@ -488,12 +488,12 @@ class NacosClientV3:
                 {
                     "name": svc.name,
                     "group_name": svc.group_name,
-                    "cluster_count": svc.cluster_count,
-                    "ip_count": svc.ip_count,
-                    "healthy_instance_count": svc.healthy_instance_count,
-                    "trigger_flag": svc.trigger_flag,
+                    "cluster_count": getattr(svc, "cluster_count", 0),
+                    "ip_count": getattr(svc, "ip_count", 0),
+                    "healthy_instance_count": getattr(svc, "healthy_instance_count", 0),
+                    "trigger_flag": getattr(svc, "trigger_flag", False),
                 }
-                for svc in service_list.service_list
+                for svc in service_list.services
             ],
         }
 
