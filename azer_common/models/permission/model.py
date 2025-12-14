@@ -116,5 +116,7 @@ class Permission(BaseModel):
 
     async def disable(self):
         """禁用权限"""
+        if self.is_system:
+            raise ValueError("系统内置权限不允许禁用")
         self.is_enabled = False
         await self.save(update_fields=["is_enabled", "updated_at"])
