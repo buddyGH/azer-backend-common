@@ -2,10 +2,9 @@
 import logging
 import importlib
 import pkgutil
-from typing import List, Optional, Set, Type
+from typing import List, Optional, Set
 from pathlib import Path
 from tortoise.models import Model
-from tortoise import Tortoise
 from azer_common.models.audit import DYNAMIC_AUDIT_MODULE
 
 
@@ -166,25 +165,3 @@ def get_tortoise_model_list(
     unique_model_modules = list(set(static_model_modules))
     logger.info(f"生成完整Tortoise模型模块列表，共{len(unique_model_modules)}个模块")
     return unique_model_modules
-
-
-def register_audit_models_to_tortoise():
-    """
-    【通用】将公共包中动态生成的审计模型注册到Tortoise（微服务初始化时调用）
-    需在Tortoise.init()之前调用
-    """
-    from azer_common.models.audit.registry import _AUDIT_MODEL_REGISTRY
-
-    registered_count = 0
-    for audit_model_cls in _AUDIT_MODEL_REGISTRY.keys():
-        try:
-            # 强制绑定模块（确保微服务Tortoise识别）
-            audit_model_cls.__module__ = DYNAMIC_AUDIT_MODULE
-            # 注册到Tortoise（兼容Tortoise所有版本）
-            if hasattr(Tortoise, "register_model"):
-                Tortoise.register_model(audit_model_cls)
-            registered_count += 1
-        except Exception as e:
-            logger.error(f"注册动态审计模型失败：{audit_model_cls.__name__}，错误：{e}")
-
-    logger.info(f"成功注册{registered_count}个动态审计模型到Tortoise（总计{len(_AUDIT_MODEL_REGISTRY)}个）")
