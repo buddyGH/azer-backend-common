@@ -3,6 +3,7 @@ from azer_common.models.auth.model import PH_SINGLETON, UserCredential
 from azer_common.utils.is_password_hashed import is_password_hashed
 from azer_common.utils.time import utc_now
 from azer_common.utils.validators import validate_password
+from azer_common.models import PUBLIC_APP_LABEL
 
 
 @pre_save(UserCredential)
