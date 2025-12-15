@@ -121,35 +121,12 @@ class BaseComponent(Generic[T]):
 
     # ========== 扩展方法 ==========
 
-    async def bulk_update_status(
-        self, ids: List[str], status_field: str, status_value: Any, skip_deleted: bool = True
-    ) -> int:
-        """批量更新状态字段"""
-        if not ids:
-            return 0
-
-        async with self.transaction():
-            update_data = {status_field: status_value}
-
-            if skip_deleted:
-                # 过滤掉已删除的记录
-                active_records = await self.get_by_ids(ids)
-                active_ids = [
-                    record.id for record in active_records if not getattr(record, self.soft_delete_field, False)
-                ]
-                ids = active_ids
-
-            if not ids:
-                return 0
-
-            return await self.bulk_update(ids, **update_data)
-
     async def bulk_restore(self, ids: List[str]) -> int:
         """批量恢复软删除的记录"""
         if not hasattr(self.model, self.soft_delete_field) or not ids:
             return 0
 
-        async with self.transaction():
+        async with self.transaction(self):
             update_data = {self.soft_delete_field: False, "deleted_at": None}
 
             query = self.model.filter(id__in=ids, **{self.soft_delete_field: True})

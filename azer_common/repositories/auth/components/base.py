@@ -4,7 +4,7 @@ from typing import Optional, List, Dict, Any
 import argon2
 from tortoise.transactions import in_transaction
 from azer_common.models.auth.model import PH_SINGLETON, UserCredential
-from azer_common.models.enums.base import MFATypeEnum
+from azer_common.models.types.enums import MFATypeEnum
 from azer_common.utils.time import utc_now
 from azer_common.utils.validators import validate_password
 
