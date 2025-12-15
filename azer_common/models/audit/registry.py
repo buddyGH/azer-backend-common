@@ -1,20 +1,35 @@
 import logging
-from typing import Type
+from typing import Optional, Type, Dict, Tuple
 from tortoise import fields
 from tortoise.models import Model
 from tortoise.signals import post_delete, post_save
 from azer_common.models.audit.base import BaseAuditLog
-from azer_common.models.audit.signals import _generic_audit_signal_handler
+from azer_common.models.base import BaseModel
 from azer_common.utils.validators import validate_model_business_type
 from azer_common.models import PUBLIC_APP_LABEL
-from azer_common.models.audit import (
-    DYNAMIC_AUDIT_MODULE,
-    _AUDIT_MODEL_REGISTRY,
-)
-
+from azer_common.models.types.constants import DYNAMIC_AUDIT_MODULE
 
 logger = logging.getLogger(__name__)
 
+# ---------------- 核心审计注册表（重构后：以业务类型为唯一键） ----------------
+# 键：业务类型（str，如 "role_permission"，全局唯一）
+# 值：Tuple[待审计业务模型类, 动态审计模型类, 信号列表]
+#   - 第一个元素：Type[Model] → 待审计的业务模型类（如 RolePermission）
+#   - 第二个元素：Type[BaseAuditLog] → 动态生成的审计模型类（如 RolePermissionAudit）
+#   - 第三个元素：list[str] → 绑定的信号列表（如 ["post_save", "post_delete"]）
+# 设计目的：
+#   1. 单注册表维护所有关联关系，避免冗余映射，降低不一致风险
+#   2. 业务类型天然唯一，作为核心标识串联「业务模型/审计模型/信号」
+#   3. 支持双向查询：业务类型→审计模型 / 业务模型→业务类型
+# 使用约束：
+#   - 业务类型不可重复注册，重复注册会抛出异常
+#   - 一个业务模型仅可绑定一个业务类型（通过临时映射保证）
+_AUDIT_REGISTRY: Dict[str, Tuple[Type[BaseModel], Type[BaseAuditLog], list[str]]] = {}
+
+# 可选：内存级临时映射（加速信号处理查询，非持久化）
+# 键：待审计业务模型类 → 值：业务类型（如 RolePermission → "role_permission"）
+# 作用：信号触发时快速通过业务模型找到业务类型，避免遍历注册表
+_MODEL_TO_BIZ_TYPE: Dict[Type[BaseModel], str] = {}
 
 # 信号映射（复用自动/手动注册逻辑，绑定到待审计模型）
 _SIGNAL_MAP = {
@@ -43,10 +58,17 @@ def register_audit(business_type: str, signals: list[str] = ["post_save"]):
         if not issubclass(target_model_cls, Model):
             raise TypeError(f"仅支持Tortoise Model类型，当前待审计模型类型：{type(target_model_cls)}")
 
-        # 优化：先检查业务类型是否已注册（避免无效生成审计模型）
-        if _is_business_type_registered(business_type):
-            existing_audit_model = _get_audit_model_by_business_type(business_type)
-            raise ValueError(f"业务类型[{business_type}]已绑定审计模型[{existing_audit_model.__name__}]，禁止重复注册")
+        # 业务模型不可重复绑定（一个模型仅对应一个业务类型）
+        if target_model_cls in _MODEL_TO_BIZ_TYPE:
+            existing_biz_type = _MODEL_TO_BIZ_TYPE[target_model_cls]
+            raise ValueError(f"业务模型[{target_model_cls.__name__}]已绑定业务类型[{existing_biz_type}]，禁止重复绑定")
+
+        # 先检查业务类型是否已注册
+        if business_type in _AUDIT_REGISTRY:
+            existing_model, existing_audit_model, _ = _AUDIT_REGISTRY[business_type]
+            raise ValueError(
+                f"业务类型[{business_type}]已绑定审计模型[{existing_audit_model.__name__}]（关联业务模型：{existing_model.__name__}），禁止重复注册"
+            )
 
         # 1. 自动生成审计模型（仅当业务类型未注册时生成）
         audit_model_cls = _create_audit_model(business_type, target_model_cls)
@@ -54,8 +76,11 @@ def register_audit(business_type: str, signals: list[str] = ["post_save"]):
         # 2. 为待审计模型绑定信号（信号由待审计模型操作触发，关联审计逻辑）
         _bind_audit_signals(target_model_cls, business_type, signals)
 
-        # 3. 写入核心注册表：审计模型 → (业务类型, 信号列表)
-        _AUDIT_MODEL_REGISTRY[audit_model_cls] = (business_type, signals)
+        # 3. 写入核心注册表
+        _AUDIT_REGISTRY[business_type] = (target_model_cls, audit_model_cls, signals)
+        # 写入临时映射（加速信号处理查询）
+        _MODEL_TO_BIZ_TYPE[target_model_cls] = business_type
+
         logger.info(
             f"[自动注册] 审计模型[{audit_model_cls.__name__}]注册完成 "
             f"(待审计模型：{target_model_cls.__name__}，业务类型：{business_type}，信号：{signals})"
@@ -78,15 +103,22 @@ def register_audit_manual(target_model: Type[Model], business_type: str, signals
         signals=["post_save", "post_delete"]
     )
     """
-    # 1. 统一参数验证
+    # 统一参数验证
     validate_model_business_type(business_type)
     if not issubclass(target_model, Model):
         raise TypeError(f"仅支持Tortoise Model类型，当前待审计模型类型：{type(target_model)}")
 
-    # 优化：先检查业务类型是否已注册（避免无效生成审计模型）
-    if _is_business_type_registered(business_type):
-        existing_audit_model = _get_audit_model_by_business_type(business_type)
-        raise ValueError(f"业务类型[{business_type}]已绑定审计模型[{existing_audit_model.__name__}]，禁止重复注册")
+    # 业务模型不可重复绑定
+    if target_model in _MODEL_TO_BIZ_TYPE:
+        existing_biz_type = _MODEL_TO_BIZ_TYPE[target_model]
+        raise ValueError(f"业务模型[{target_model.__name__}]已绑定业务类型[{existing_biz_type}]，禁止重复绑定")
+
+    # 先检查业务类型是否已注册（避免无效生成审计模型）
+    if business_type in _AUDIT_REGISTRY:
+        existing_model, existing_audit_model, _ = _AUDIT_REGISTRY[business_type]
+        raise ValueError(
+            f"业务类型[{business_type}]已绑定审计模型[{existing_audit_model.__name__}]（关联业务模型：{existing_model.__name__}），禁止重复注册"
+        )
 
     # 2. 生成审计模型（仅当业务类型未注册时生成）
     audit_model_cls = _create_audit_model(business_type, target_model)
@@ -94,8 +126,10 @@ def register_audit_manual(target_model: Type[Model], business_type: str, signals
     # 3. 为待审计模型绑定信号
     _bind_audit_signals(target_model, business_type, signals)
 
-    # 4. 写入核心注册表
-    _AUDIT_MODEL_REGISTRY[audit_model_cls] = (business_type, signals)
+    # 4. 写入核心注册表 + 临时映射
+    _AUDIT_REGISTRY[business_type] = (target_model, audit_model_cls, signals)
+    _MODEL_TO_BIZ_TYPE[target_model] = business_type
+
     logger.info(
         f"[手动注册] 审计模型[{audit_model_cls.__name__}]注册完成 "
         f"(待审计模型：{target_model.__name__}，业务类型：{business_type}，信号：{signals})"
@@ -178,6 +212,7 @@ def _bind_audit_signals(target_model: Type[Model], business_type: str, signals: 
                 f"(业务类型：{business_type})"
             )
             continue
+        from azer_common.models.audit.signals import _generic_audit_signal_handler
 
         # 绑定信号处理函数（触发信号时生成审计日志）
         signal(target_model)(_generic_audit_signal_handler)
@@ -191,35 +226,50 @@ def get_audit_model(business_type: str) -> Type[BaseAuditLog]:
     :return: 动态生成的审计模型类（如 RolePermissionAudit）
     :raise ValueError: 未找到对应审计模型（未注册）
     """
-    target_audit_model = _get_audit_model_by_business_type(business_type)
-    if not target_audit_model:
+    registry_item = _AUDIT_REGISTRY.get(business_type)
+    if not registry_item:
         raise ValueError(
             f"未找到业务类型[{business_type}]对应的审计模型！"
             f"请确认已通过 @register_audit 或 register_audit_manual 完成注册"
         )
+    # registry_item[1] 是审计模型类
+    target_audit_model = registry_item[1]
 
     logger.debug(f"根据业务类型[{business_type}]找到审计模型：{target_audit_model.__name__}")
     return target_audit_model
 
 
-# ---------------- 内部辅助函数 ----------------
+# ---------------- 内部辅助函数----------------
 def _is_business_type_registered(business_type: str) -> bool:
     """
     内部辅助：检查业务类型是否已注册（避免重复生成审计模型）
     :return: True=已注册，False=未注册
     """
-    for _, (bt, _) in _AUDIT_MODEL_REGISTRY.items():
-        if bt == business_type:
-            return True
-    return False
+    return business_type in _AUDIT_REGISTRY
 
 
-def _get_audit_model_by_business_type(business_type: str) -> Type[Model] | None:
+def _get_audit_model_by_business_type(business_type: str) -> Optional[Type[BaseAuditLog]]:
     """
     内部辅助：根据业务类型查找已注册的审计模型
     :return: 审计模型类 / None（未找到）
     """
-    for audit_model_cls, (bt, _) in _AUDIT_MODEL_REGISTRY.items():
-        if bt == business_type:
-            return audit_model_cls
+    registry_item = _AUDIT_REGISTRY.get(business_type)
+    return registry_item[1] if registry_item else None
+
+
+def get_biz_type_by_model(target_model: Type[Model]) -> Optional[str]:
+    """
+    供信号处理函数使用：根据业务模型快速查找对应的业务类型
+    :return: 业务类型 / None（未找到）
+    """
+    # 优先查临时映射（O(1)），兜底遍历注册表（仅临时映射未命中时触发）
+    biz_type = _MODEL_TO_BIZ_TYPE.get(target_model)
+    if biz_type:
+        return biz_type
+
+    # 兜底逻辑
+    for _biz_type, (model_cls, _, _) in _AUDIT_REGISTRY.items():
+        if model_cls == target_model:
+            _MODEL_TO_BIZ_TYPE[target_model] = _biz_type
+            return _biz_type
     return None

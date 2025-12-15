@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from tortoise.expressions import Function, Q, F
 from tortoise.functions import Count
-from azer_common.models.enums.base import SexEnum, UserLifecycleStatus, UserSecurityStatus
+from azer_common.models.types.enums import SexEnum, UserLifecycleStatus, UserSecurityStatus
 from azer_common.repositories.base_component import BaseComponent
 from azer_common.utils.time import utc_now
 from tortoise.expressions import RawSQL

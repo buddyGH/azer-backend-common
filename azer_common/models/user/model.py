@@ -5,7 +5,7 @@ from async_property import async_property
 from tortoise import fields
 from azer_common.models.auth.model import UserCredential
 from azer_common.models.base import BaseModel
-from azer_common.models.enums.base import SexEnum, UserLifecycleStatus, UserSecurityStatus
+from azer_common.models.types.enums import SexEnum, UserLifecycleStatus, UserSecurityStatus
 from azer_common.utils.time import today_utc
 from azer_common.utils.validators import (
     validate_url,

@@ -5,21 +5,21 @@ import pkgutil
 from typing import List, Optional, Set
 from pathlib import Path
 from tortoise.models import Model
-from azer_common.models.audit import DYNAMIC_AUDIT_MODULE
-
+from azer_common.models.types.constants import DYNAMIC_AUDIT_MODULE
+from azer_common.models.audit.registry import _AUDIT_REGISTRY
 
 logger = logging.getLogger(__name__)
 
 # 公共包默认排除规则（排除非模型文件/目录，微服务可追加/覆盖）
 DEFAULT_EXCLUDE_FILES = {
     "__init__.py",
-    "base.py",
+    "enums.py",
     "signals.py",
     "utils.py",
     "context.py",
     "registry.py",
 }
-DEFAULT_EXCLUDE_DIRS = {"__pycache__", "dynamic", "manual", "enums", "utils"}  # dynamic单独处理
+DEFAULT_EXCLUDE_DIRS = {"__pycache__", "dynamic", "manual", "types", "utils"}  # dynamic单独处理
 
 
 def collect_all_static_models(
@@ -111,23 +111,20 @@ def collect_dynamic_audit_models() -> List[str]:
     【通用】收集公共包中动态审计模型所在的模块路径（适配Tortoise配置）
     :return: 动态审计模型的模块路径列表（如 ["azer_common.models.audit.dynamic"]）
     """
-    from azer_common.models.audit.registry import _AUDIT_MODEL_REGISTRY
-
     # 前置检查：确保动态模型已绑定到模块
-    if _AUDIT_MODEL_REGISTRY:
-        import importlib
-
+    if _AUDIT_REGISTRY:  # 新注册表非空时检查
         dynamic_module = importlib.import_module(DYNAMIC_AUDIT_MODULE)
         # 验证模型是否在模块中（日志排查）
         module_attrs = dir(dynamic_module)
         missing_models = []
-        for audit_model_cls in _AUDIT_MODEL_REGISTRY.keys():
+
+        for _, audit_model_cls, _ in _AUDIT_REGISTRY.values():
             if audit_model_cls.__name__ not in module_attrs:
                 missing_models.append(audit_model_cls.__name__)
         if missing_models:
             logger.warning(f"动态模型未添加到模块[{DYNAMIC_AUDIT_MODULE}]：{missing_models}")
 
-    logger.info(f"收集到动态审计模型模块：{DYNAMIC_AUDIT_MODULE}（包含{len(_AUDIT_MODEL_REGISTRY)}个动态审计模型）")
+    logger.info(f"收集到动态审计模型模块：{DYNAMIC_AUDIT_MODULE}（包含{len(_AUDIT_REGISTRY)}个动态审计模型）")
     return [DYNAMIC_AUDIT_MODULE]
 
 

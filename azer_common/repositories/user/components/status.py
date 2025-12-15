@@ -1,7 +1,7 @@
 # azer_common/repositories/user/components/status.py
 from datetime import timedelta
 from typing import Any, Dict, List, Optional, Set, Tuple
-from azer_common.models.enums.base import UserLifecycleStatus, UserSecurityStatus
+from azer_common.models.types.enums import UserLifecycleStatus, UserSecurityStatus
 from azer_common.models.user.model import User
 from azer_common.repositories.base_component import BaseComponent
 from azer_common.repositories.user.status import UserStatusTransitions

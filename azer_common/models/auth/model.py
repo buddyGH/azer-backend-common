@@ -6,7 +6,7 @@ from tortoise import fields
 from azer_common.models.auth.oauth_connection import OAuthConnection
 from azer_common.models.auth.password_history import PasswordHistory
 from azer_common.models.base import BaseModel
-from azer_common.models.enums.base import MFATypeEnum
+from azer_common.models.types.enums import MFATypeEnum
 from azer_common.utils.time import add_days, utc_now
 from azer_common.utils.validators import validate_password
 from typing import List, Optional

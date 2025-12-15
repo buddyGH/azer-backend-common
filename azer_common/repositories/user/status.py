@@ -1,5 +1,5 @@
 # azer_common/repositories/user/status.py
-from azer_common.models.enums.base import UserLifecycleStatus
+from azer_common.models.types.enums import UserLifecycleStatus
 
 
 class UserLifecycleStatusTransitions:
