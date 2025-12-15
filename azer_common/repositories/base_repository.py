@@ -27,16 +27,16 @@ class IRepository(Generic[T]):
     async def bulk_create(self, data_list: List[Dict[str, Any]]) -> List[T]:
         raise NotImplementedError
 
-    async def update(self, id: str, **data) -> Optional[T]:
-        raise NotImplementedError
-
-    async def bulk_update(self, ids: List[str], **data) -> int:
-        raise NotImplementedError
-
     async def delete(self, id: str, soft: bool = True) -> bool:
         raise NotImplementedError
 
     async def bulk_delete(self, ids: List[str], soft: bool = True) -> int:
+        raise NotImplementedError
+
+    async def update(self, id: str, **data) -> Optional[T]:
+        raise NotImplementedError
+
+    async def bulk_update(self, ids: List[str], **data) -> int:
         raise NotImplementedError
 
     async def filter(
@@ -56,6 +56,26 @@ class BaseRepository(IRepository[T]):
         self.default_order_by = "-created_at"
         self.auto_update_fields = ["updated_at"]
         self.system_protected_fields = ["id", "created_at", "deleted_at", self.soft_delete_field]
+
+    async def get_by_id(self, id: str) -> Optional[T]:
+        """根据ID获取单个记录"""
+        filters = {"id": id}
+        if hasattr(self.model, self.soft_delete_field):
+            filters[self.soft_delete_field] = False
+        return await self.model.get_or_none(**filters)
+
+    async def get_by_ids(self, ids: List[str]) -> List[T]:
+        """批量获取记录"""
+        query = self.model.filter(id__in=ids)
+        if hasattr(self.model, self.soft_delete_field):
+            query = query.filter(**{self.soft_delete_field: False})
+        return await query.all()
+
+    async def exists(self, **filters) -> bool:
+        """检查记录是否存在"""
+        if hasattr(self.model, self.soft_delete_field):
+            filters[self.soft_delete_field] = False
+        return await self.model.filter(**filters).exists()
 
     async def create(self, **data) -> T:
         """创建单个记录"""
@@ -77,19 +97,46 @@ class BaseRepository(IRepository[T]):
         except Exception:
             raise
 
-    async def get_by_id(self, id: str) -> Optional[T]:
-        """根据ID获取单个记录"""
-        filters = {"id": id}
-        if hasattr(self.model, self.soft_delete_field):
-            filters[self.soft_delete_field] = False
-        return await self.model.get_or_none(**filters)
+    async def delete(self, id: str, soft: bool = True) -> bool:
+        """删除单个记录（默认软删除）"""
+        instance = await self.get_by_id(id)
+        if not instance:
+            return False
 
-    async def get_by_ids(self, ids: List[str]) -> List[T]:
-        """批量获取记录"""
-        query = self.model.filter(id__in=ids)
-        if hasattr(self.model, self.soft_delete_field):
-            query = query.filter(**{self.soft_delete_field: False})
-        return await query.all()
+        if hasattr(instance, "is_system") and instance.is_system:
+            raise ValueError("系统记录不允许删除")
+
+        if soft and hasattr(instance, self.soft_delete_field):
+            setattr(instance, self.soft_delete_field, True)
+            await instance.save()
+            return True
+        else:
+            await instance.delete()
+            return True
+
+    async def bulk_delete(self, ids: List[str], soft: bool = True) -> int:
+        """批量删除记录（带事务）"""
+        if not ids:
+            return 0
+
+        try:
+            async with self.transaction():
+                if hasattr(self.model, "is_system"):
+                    system_count = await self.model.filter(
+                        id__in=ids,
+                        is_system=True,
+                        **{self.soft_delete_field: False} if hasattr(self.model, self.soft_delete_field) else {},
+                    ).count()
+                    if system_count > 0:
+                        raise ValueError("批量删除中包含系统记录")
+
+                if soft and hasattr(self.model, self.soft_delete_field):
+                    update_data = {self.soft_delete_field: True, "deleted_at": utc_now()}
+                    return await self.model.filter(id__in=ids).update(**update_data)
+                else:
+                    return await self.model.filter(id__in=ids).delete()
+        except Exception:
+            raise
 
     async def update(self, id: str, **data) -> Optional[T]:
         """更新单个记录"""
@@ -158,53 +205,6 @@ class BaseRepository(IRepository[T]):
                 await after_update_callback(updated_records, **kwargs)
 
             return updated_count, updated_records
-
-    async def delete(self, id: str, soft: bool = True) -> bool:
-        """删除单个记录（默认软删除）"""
-        instance = await self.get_by_id(id)
-        if not instance:
-            return False
-
-        if hasattr(instance, "is_system") and instance.is_system:
-            raise ValueError("系统记录不允许删除")
-
-        if soft and hasattr(instance, self.soft_delete_field):
-            setattr(instance, self.soft_delete_field, True)
-            await instance.save()
-            return True
-        else:
-            await instance.delete()
-            return True
-
-    async def bulk_delete(self, ids: List[str], soft: bool = True) -> int:
-        """批量删除记录（带事务）"""
-        if not ids:
-            return 0
-
-        try:
-            async with self.transaction():
-                if hasattr(self.model, "is_system"):
-                    system_count = await self.model.filter(
-                        id__in=ids,
-                        is_system=True,
-                        **{self.soft_delete_field: False} if hasattr(self.model, self.soft_delete_field) else {},
-                    ).count()
-                    if system_count > 0:
-                        raise ValueError("批量删除中包含系统记录")
-
-                if soft and hasattr(self.model, self.soft_delete_field):
-                    update_data = {self.soft_delete_field: True, "deleted_at": utc_now()}
-                    return await self.model.filter(id__in=ids).update(**update_data)
-                else:
-                    return await self.model.filter(id__in=ids).delete()
-        except Exception:
-            raise
-
-    async def exists(self, **filters) -> bool:
-        """检查记录是否存在"""
-        if hasattr(self.model, self.soft_delete_field):
-            filters[self.soft_delete_field] = False
-        return await self.model.filter(**filters).exists()
 
     async def filter(
         self, offset: int = 0, limit: int = 20, order_by: Union[str, List[str]] = None, **filters
