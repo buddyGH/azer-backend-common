@@ -2,13 +2,14 @@
 from tortoise import fields
 from azer_common.models.base import BaseModel
 from azer_common.utils.time import utc_now
+from azer_common.models import PUBLIC_APP_LABEL
 
 
 class OAuthConnection(BaseModel):
     """用户第三方登录连接表"""
 
     credential = fields.ForeignKeyField(
-        "models.UserCredential",
+        model_name=PUBLIC_APP_LABEL + ".UserCredential",
         related_name="oauth_connections",
         on_delete=fields.CASCADE,
         description="关联的核心认证凭证",

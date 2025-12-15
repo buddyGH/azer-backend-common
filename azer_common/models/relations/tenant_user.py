@@ -1,6 +1,7 @@
 from tortoise import fields
 from azer_common.models.base import BaseModel
 from azer_common.utils.time import utc_now
+from azer_common.models import PUBLIC_APP_LABEL
 
 
 class TenantUser(BaseModel):
@@ -8,10 +9,18 @@ class TenantUser(BaseModel):
 
     # 核心关联字段
     tenant = fields.ForeignKeyField(
-        "models.Tenant", related_name="tenant_users", on_delete=fields.RESTRICT, description="关联租户", null=False
+        model_name=PUBLIC_APP_LABEL + ".Tenant",
+        related_name="tenant_users",
+        on_delete=fields.RESTRICT,
+        description="关联租户",
+        null=False,
     )
     user = fields.ForeignKeyField(
-        "models.User", related_name="user_tenants", on_delete=fields.RESTRICT, description="关联用户", null=False
+        model_name=PUBLIC_APP_LABEL + ".User",
+        related_name="user_tenants",
+        on_delete=fields.RESTRICT,
+        description="关联用户",
+        null=False,
     )
 
     # 状态控制字段

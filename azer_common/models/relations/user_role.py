@@ -1,5 +1,5 @@
 from tortoise import fields
-
+from azer_common.models import PUBLIC_APP_LABEL
 from azer_common.models.audit.registry import register_audit
 from azer_common.models.base import BaseModel
 from azer_common.utils.time import utc_now
@@ -11,13 +11,21 @@ class UserRole(BaseModel):
 
     # 核心关联字段
     user = fields.ForeignKeyField(
-        "models.User", related_name="user_roles", description="关联用户", on_delete=fields.RESTRICT, null=False
+        model_name=PUBLIC_APP_LABEL + ".User",
+        related_name="user_roles",
+        description="关联用户",
+        on_delete=fields.RESTRICT,
+        null=False,
     )
     role = fields.ForeignKeyField(
-        "models.Role", related_name="role_users", description="关联角色", on_delete=fields.RESTRICT, null=False
+        model_name=PUBLIC_APP_LABEL + ".Role",
+        related_name="role_users",
+        description="关联角色",
+        on_delete=fields.RESTRICT,
+        null=False,
     )
     tenant = fields.ForeignKeyField(
-        "models.Tenant",
+        model_name=PUBLIC_APP_LABEL + ".Tenant",
         related_name="user_roles",
         description="所属租户（强关联）",
         on_delete=fields.RESTRICT,

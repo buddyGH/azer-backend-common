@@ -1,6 +1,7 @@
 # azer_common/models/auth/password_history.py
 from tortoise import fields
 from azer_common.models.base import BaseModel
+from azer_common.models import PUBLIC_APP_LABEL
 
 
 class PasswordHistory(BaseModel):
@@ -10,7 +11,7 @@ class PasswordHistory(BaseModel):
     """
 
     credential = fields.ForeignKeyField(
-        "models.UserCredential",
+        model_name=PUBLIC_APP_LABEL + ".UserCredential",
         related_name="password_histories",
         on_delete=fields.CASCADE,
         description="关联的核心认证凭证",
@@ -22,7 +23,7 @@ class PasswordHistory(BaseModel):
 
     # 额外字段用于审计分析
     changed_by = fields.ForeignKeyField(
-        "models.User",
+        model_name=PUBLIC_APP_LABEL + ".User",
         null=True,
         on_delete=fields.SET_NULL,
         description="执行此次密码修改操作的用户（例如，管理员重置用户密码时记录管理员）",

@@ -1,12 +1,16 @@
 import logging
-from typing import Type, Dict, Tuple
+from typing import Type
 from tortoise import fields
 from tortoise.models import Model
 from tortoise.signals import post_delete, post_save
 from azer_common.models.audit.base import BaseAuditLog
 from azer_common.models.audit.signals import _generic_audit_signal_handler
 from azer_common.utils.validators import validate_model_business_type
-from azer_common.models.audit import DEFAULT_TARGET_MODEL_MODULE, DYNAMIC_AUDIT_MODULE, _AUDIT_MODEL_REGISTRY
+from azer_common.models import PUBLIC_APP_LABEL
+from azer_common.models.audit import (
+    DYNAMIC_AUDIT_MODULE,
+    _AUDIT_MODEL_REGISTRY,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -100,7 +104,7 @@ def register_audit_manual(target_model: Type[Model], business_type: str, signals
 
 def _create_audit_model(business_type: str, target_model: Type[Model]) -> Type[BaseAuditLog]:
     """
-    底层：动态生成审计模型（修正外键路径）
+    底层：动态生成审计模型
     :param business_type: 业务类型（待审计模型类名小写下划线）
     :param target_model: 待审计的业务模型类
     :return: 动态生成的审计模型类（如 RolePermissionAudit）
@@ -113,18 +117,15 @@ def _create_audit_model(business_type: str, target_model: Type[Model]) -> Type[B
     fk_field_name = business_type
 
     # 修正：获取待审计模型的实际模块路径（优先用模型自身模块，无则用默认路径）
-    target_model_module = (
-        target_model.__module__ if target_model.__module__ != "__main__" else DEFAULT_TARGET_MODEL_MODULE
-    )
-    # 待审计模型的完整路径（如 "models.role.RolePermission" 或 "models.RolePermission"）
-    target_model_full_path = f"{target_model_module}.{target_model.__name__}"
+    # 正确格式：公共包app label + 待审计模型名（如 "azer_common.RolePermission"）
+    target_model_name = f"{PUBLIC_APP_LABEL}.{target_model.__name__}"
 
     # 动态构建审计模型属性（修正外键关联路径）
     audit_model_attrs = {
         "__module__": DYNAMIC_AUDIT_MODULE,  # 动态审计模型存放路径
         "__doc__": f"{target_model.__name__}审计日志表（动态生成）",
         fk_field_name: fields.ForeignKeyField(
-            target_model_full_path,  # 如 "models.RolePermission"
+            target_model_name,  # 关键：使用app label格式，而非模块路径
             related_name="audit_logs",  # 待审计模型可通过该属性反向查审计日志
             on_delete=fields.SET_NULL,
             null=True,
@@ -142,8 +143,23 @@ def _create_audit_model(business_type: str, target_model: Type[Model]) -> Type[B
 
     # 动态创建审计模型类（继承BaseAuditLog）
     audit_model_cls = type(audit_class_name, (BaseAuditLog,), audit_model_attrs)
+    try:
+        # 导入dynamic模块
+        import importlib
+
+        dynamic_module = importlib.import_module(DYNAMIC_AUDIT_MODULE)
+        # 将动态模型添加到模块的__dict__中（Tortoise能遍历到）
+        setattr(dynamic_module, audit_class_name, audit_model_cls)
+        # 追加到模块的__all__
+        if hasattr(dynamic_module, "__all__"):
+            dynamic_module.__all__.append(audit_class_name)
+        else:
+            dynamic_module.__all__ = [audit_class_name]
+    except ImportError as e:
+        raise RuntimeError(f"无法导入动态审计模块[{DYNAMIC_AUDIT_MODULE}]：{e}")
+
     logger.debug(
-        f"动态生成审计模型：{audit_class_name} " f"(表名：{audit_table_name}，关联待审计模型：{target_model_full_path})"
+        f"动态生成审计模型：{audit_class_name} " f"(表名：{audit_table_name}，关联待审计模型：{target_model_name})"
     )
     return audit_model_cls
 

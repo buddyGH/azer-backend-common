@@ -1,5 +1,5 @@
 from tortoise import fields
-
+from azer_common.models import PUBLIC_APP_LABEL
 from azer_common.models.audit.registry import register_audit
 from azer_common.models.base import BaseModel
 from azer_common.utils.time import utc_now
@@ -11,10 +11,14 @@ class RolePermission(BaseModel):
 
     # 核心关联字段
     role = fields.ForeignKeyField(
-        "models.Role", related_name="role_permissions", description="关联角色", on_delete=fields.RESTRICT, null=False
+        model_name=PUBLIC_APP_LABEL + ".Role",
+        related_name="role_permissions",
+        description="关联角色",
+        on_delete=fields.RESTRICT,
+        null=False,
     )
     permission = fields.ForeignKeyField(
-        "models.Permission",
+        model_name=PUBLIC_APP_LABEL + ".Permission",
         related_name="permission_roles",
         description="关联权限",
         on_delete=fields.RESTRICT,
@@ -23,7 +27,7 @@ class RolePermission(BaseModel):
 
     # 多租户字段
     tenant = fields.ForeignKeyField(
-        "models.Tenant",
+        model_name=PUBLIC_APP_LABEL + ".Tenant",
         related_name="role_permissions",
         description="所属租户（兼容全局权限）",
         on_delete=fields.RESTRICT,
