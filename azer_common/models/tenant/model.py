@@ -1,6 +1,4 @@
-import re
 from typing import List
-
 from async_property import async_property
 from tortoise import fields
 from azer_common.models.base import BaseModel

@@ -10,7 +10,7 @@ from azer_common.models.enums.base import MFATypeEnum
 from azer_common.utils.time import add_days, utc_now
 from azer_common.utils.validators import validate_password
 from typing import List, Optional
-
+from azer_common.models import PUBLIC_APP_LABEL
 
 # 复用密码哈希单例
 PH_SINGLETON = PasswordHasher()
@@ -21,7 +21,10 @@ class UserCredential(BaseModel):
 
     # 关联用户
     user = fields.OneToOneField(
-        "models.User", related_name="credential", on_delete=fields.CASCADE, description="关联用户"
+        model_name=PUBLIC_APP_LABEL + ".User",
+        related_name="credential",
+        on_delete=fields.CASCADE,
+        description="关联用户",
     )
 
     # 用户密码

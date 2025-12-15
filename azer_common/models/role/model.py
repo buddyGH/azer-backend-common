@@ -1,7 +1,7 @@
-import re
 from tortoise import fields
 from azer_common.models.base import BaseModel
 from azer_common.utils.validators import validate_role_code
+from azer_common.models import PUBLIC_APP_LABEL
 
 
 class Role(BaseModel):
@@ -21,7 +21,7 @@ class Role(BaseModel):
 
     # 多租户关联字段
     tenant = fields.ForeignKeyField(
-        "models.Tenant",
+        model_name=PUBLIC_APP_LABEL + ".Tenant",
         related_name="roles",
         on_delete=fields.RESTRICT,
         description="所属租户（强关联，非空）",
@@ -39,7 +39,7 @@ class Role(BaseModel):
     # 权限继承字段
     level = fields.IntField(default=0, ge=0, description="角色等级（用于权限继承，数值越高优先级越高）")
     parent = fields.ForeignKeyField(
-        "models.Role",
+        model_name=PUBLIC_APP_LABEL + ".Role",
         related_name="children",
         null=True,
         on_delete=fields.SET_NULL,

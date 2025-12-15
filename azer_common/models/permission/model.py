@@ -1,4 +1,4 @@
-import re
+from azer_common.models import PUBLIC_APP_LABEL
 from tortoise import fields
 from azer_common.models.base import BaseModel
 from azer_common.utils.validators import validate_permission_code
@@ -18,7 +18,7 @@ class Permission(BaseModel):
 
     # 关联字段
     tenant = fields.ForeignKeyField(
-        "models.Tenant",
+        model_name=PUBLIC_APP_LABEL + ".Tenant",
         related_name="permissions_list",
         null=True,
         on_delete=fields.RESTRICT,
