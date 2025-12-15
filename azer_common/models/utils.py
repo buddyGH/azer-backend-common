@@ -164,4 +164,4 @@ def get_tortoise_model_list(
     # 去重（防止重复添加模块）
     unique_model_modules = list(set(static_model_modules))
     logger.info(f"生成完整Tortoise模型模块列表，共{len(unique_model_modules)}个模块")
-    return unique_model_modules
+    return unique_model_modules + ["aerich.models"]
