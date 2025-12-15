@@ -1,11 +1,11 @@
 # azer_common/models/audit/signals.py
 import logging
 from typing import Optional, Type
-from importlib import import_module
-from tortoise.models import Model
 from tortoise.exceptions import ConfigurationError
-from .context import get_audit_context, clear_audit_context, HasId
+from azer_common.models.audit.base import BaseAuditLog
+from azer_common.models.audit.context import get_audit_context, HasId
 from azer_common.models.audit import _AUDIT_MODEL_REGISTRY
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ async def _generic_audit_signal_handler(
 
 # 增加类型约束、字段校验
 async def _create_audit_log(instance: HasId, business_type: str):
-    """通用审计日志生成逻辑（优化版）"""
+    """通用审计日志生成逻辑"""
     logger.debug(f"开始生成审计日志：业务类型={business_type}，实例ID={instance.id}")
     context = get_audit_context()
 
@@ -83,24 +83,30 @@ async def _create_audit_log(instance: HasId, business_type: str):
         raise  # 配置错误需暴露，便于修复
     except Exception as e:
         logger.error(f"审计日志生成失败：业务类型={business_type}，实例ID={instance.id}，错误={str(e)}", exc_info=True)
-        # 优化5：可选是否抛出异常（配置化）
         if getattr(audit_cls, "audit_raise_error", False):
             raise
 
 
-def get_audit_model(business_type: str) -> Optional[Type[Model]]:
-    cache_key = f"audit_model_{business_type}"
-    if hasattr(get_audit_model, cache_key):
-        return getattr(get_audit_model, cache_key)
+def get_audit_model(business_type: str) -> Type[BaseAuditLog]:
+    """
+    核心查询接口：根据业务类型查找对应的审计模型（适配信号处理逻辑）
+    :param business_type: 业务类型（待审计模型类名小写下划线，如 "role_permission"）
+    :return: 动态生成的审计模型类（如 RolePermissionAudit）
+    :raise ValueError: 未找到对应审计模型（未注册）
+    """
+    # 遍历注册表：根据业务类型匹配审计模型
+    target_audit_model = None
+    for audit_model_cls, (bt, _) in _AUDIT_MODEL_REGISTRY.items():
+        if bt == business_type:
+            target_audit_model = audit_model_cls
+            break
 
-    try:
-        sub_module_path = f"azer_common.models.audit.{business_type}"
-        sub_module = import_module(sub_module_path)
-        camel_case = "".join(word.capitalize() for word in business_type.split("_"))
-        audit_class_name = f"{camel_case}Audit"
-        audit_cls = getattr(sub_module, audit_class_name)
-        setattr(get_audit_model, cache_key, audit_cls)
-        return audit_cls
-    except (ImportError, AttributeError) as e:
-        logger.error(f"获取审计表失败：业务类型={business_type}，错误={str(e)}")
-        return None
+    # 未找到时抛出明确异常（适配signals.py的防御逻辑）
+    if not target_audit_model:
+        raise ValueError(
+            f"未找到业务类型[{business_type}]对应的审计模型！"
+            f"请确认已通过 @register_audit 或 register_audit_manual 完成注册"
+        )
+
+    logger.debug(f"根据业务类型[{business_type}]找到审计模型：{target_audit_model.__name__}")
+    return target_audit_model
