@@ -481,21 +481,7 @@ class NacosClientV3:
         )
 
         service_list = await self.naming_client.list_services(list_param)
-
-        return {
-            "count": service_list.count,
-            "service_list": [
-                {
-                    "name": svc.name,
-                    "group_name": svc.group_name,
-                    "cluster_count": getattr(svc, "cluster_count", 0),
-                    "ip_count": getattr(svc, "ip_count", 0),
-                    "healthy_instance_count": getattr(svc, "healthy_instance_count", 0),
-                    "trigger_flag": getattr(svc, "trigger_flag", False),
-                }
-                for svc in service_list.services
-            ],
-        }
+        return {"count": service_list.count, "service_list": service_list.services}
 
     async def publish_config(
         self, data_id: str, content: str, group: str = "DEFAULT_GROUP", config_type: str = "yaml", **kwargs
