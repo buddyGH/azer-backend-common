@@ -1,100 +1,176 @@
 # azer_common/models/utils.py
+import logging
 import importlib
 import pkgutil
-from typing import List, Tuple, Type
+from typing import List, Optional, Set, Type
 from pathlib import Path
-
 from tortoise.models import Model
-from azer_common.models.audit.registry import _AUDIT_MODEL_REGISTRY
+from tortoise import Tortoise
 
-# 无需导入的文件/目录（全局排除规则）
-EXCLUDE_FILES = {"base.py", "registry.py", "signals.py", "__init__.py", "utils.py"}
-EXCLUDE_DIRS = {"__pycache__", "dynamic", "manual"}  # dynamic单独处理
+from azer_common.models.audit import DYNAMIC_AUDIT_MODULE
 
 
-def collect_all_static_models(base_module: str = "azer_common.models", exclude_modules: List[str] = None) -> List[str]:
+logger = logging.getLogger(__name__)
+
+# 公共包默认排除规则（排除非模型文件/目录，微服务可追加/覆盖）
+DEFAULT_EXCLUDE_FILES = {
+    "__init__.py",
+    "base.py",
+    "signals.py",
+    "utils.py",
+    "context.py",
+    "registry.py",
+}
+DEFAULT_EXCLUDE_DIRS = {"__pycache__", "dynamic", "manual", "enums", "utils"}  # dynamic单独处理
+
+
+def collect_all_static_models(
+    base_module: str,
+    custom_exclude_files: Optional[Set[str]] = None,
+    custom_exclude_dirs: Optional[Set[str]] = None,
+    exclude_modules: Optional[List[str]] = None,
+) -> List[str]:
     """
-    收集所有静态编写的模型（排除base/registry等非模型文件）
-    :param base_module: 模型根模块（如 "azer_common.models"）
-    :param exclude_modules: 排除的子模块（如 ["audit.dynamic"]）
-    :return: 可导入的模型路径列表（如 ["azer_common.models.user.model.User"]）
+    【通用】收集指定根模块下所有静态编写的模型（适配微服务调用）
+    :param base_module: 微服务的模型根模块（如 "my_service.models" 或 "azer_common.models"）
+    :param custom_exclude_files: 微服务自定义排除的文件（追加到默认规则），如 {"test_model.py"}
+    :param custom_exclude_dirs: 微服务自定义排除的目录（追加到默认规则），如 {"tests"}
+    :param exclude_modules: 微服务自定义排除的子模块（如 ["my_service.models.tests"]）
+    :return: 可导入的模型路径列表（如 ["my_service.models.user.model.User"]）
     """
+    # 合并默认排除项 + 自定义排除项
+    exclude_files = DEFAULT_EXCLUDE_FILES.copy()
+    if custom_exclude_files:
+        exclude_files.update(custom_exclude_files)
+
+    exclude_dirs = DEFAULT_EXCLUDE_DIRS.copy()
+    if custom_exclude_dirs:
+        exclude_dirs.update(custom_exclude_dirs)
+
     if exclude_modules is None:
         exclude_modules = []
 
     model_paths = []
-    base_path = Path(importlib.import_module(base_module).__file__).parent
+    try:
+        # 导入根模块并获取物理路径（适配任意模块）
+        root_module = importlib.import_module(base_module)
+        root_path = Path(root_module.__file__).parent
+    except ImportError as e:
+        logger.error(f"导入模型根模块失败：{base_module}，错误：{e}")
+        return model_paths
 
-    # 遍历所有子模块
-    for item in pkgutil.walk_packages([str(base_path)], prefix=f"{base_module}."):
+    # 遍历根模块下所有子模块（递归）
+    for item in pkgutil.walk_packages([str(root_path)], prefix=f"{base_module}."):
         module_name = item.name
-        # 排除指定模块
+        # 排除指定子模块
         if any(excl in module_name for excl in exclude_modules):
             continue
 
-        # 导入模块并筛选模型类
         try:
-            module = importlib.import_module(module_name)
-            # 排除非模型文件
-            if Path(module.__file__).name in EXCLUDE_FILES:
+            # 导入当前子模块
+            sub_module = importlib.import_module(module_name)
+            sub_module_path = Path(sub_module.__file__)
+
+            # 排除：非.py文件 / 排除列表内的文件 / 排除列表内的目录
+            if sub_module_path.suffix != ".py":
+                continue
+            if sub_module_path.name in exclude_files:
+                continue
+            if any(dir_name in sub_module_path.parts for dir_name in exclude_dirs):
                 continue
 
-            # 收集模块内的Model子类
-            for attr_name in dir(module):
-                attr = getattr(module, attr_name)
+            # 收集模块内的Tortoise Model子类（排除基类/非模型）
+            for attr_name in dir(sub_module):
+                attr = getattr(sub_module, attr_name)
                 if (
-                    isinstance(attr, type)
-                    and issubclass(attr, Model)
-                    and attr.__module__ == module_name
-                    and not attr.__name__.startswith("Base")  # 排除基类
+                    isinstance(attr, type)  # 是类
+                    and issubclass(attr, Model)  # 继承Tortoise Model
+                    and attr.__module__ == module_name  # 属于当前模块（排除导入的模型）
+                    and not attr.__name__.startswith("Base")  # 排除基类（如BaseModel）
                 ):
-                    model_paths.append(f"{module_name}.{attr_name}")
-        except ImportError:
+                    model_path = f"{module_name}.{attr_name}"
+                    model_paths.append(model_path)
+                    logger.debug(f"收集到静态模型：{model_path}")
+
+        except ImportError as e:
+            logger.warning(f"导入子模块失败：{module_name}，错误：{e}，跳过")
             continue
 
-    return model_paths
+    # 去重并返回
+    unique_model_paths = list(set(model_paths))
+    logger.info(f"从模块[{base_module}]收集到{len(unique_model_paths)}个静态模型")
+    return unique_model_paths
 
 
 def collect_dynamic_audit_models() -> List[str]:
     """
-    收集所有动态生成的审计模型（供Tortoise导入）
+    【通用】收集公共包中所有动态生成的审计模型（微服务可直接使用）
     :return: 动态审计模型的导入路径列表（如 ["azer_common.models.audit.dynamic.RolePermissionAudit"]）
     """
-    dynamic_module = "azer_common.models.audit.dynamic"
-    return [f"{dynamic_module}.{model_cls.__name__}" for model_cls in _AUDIT_MODEL_REGISTRY.keys()]
+    from azer_common.models.audit.registry import _AUDIT_MODEL_REGISTRY
+
+    dynamic_audit_paths = []
+    for audit_model_cls in _AUDIT_MODEL_REGISTRY.keys():
+        # 强制绑定到公共包的dynamic模块（微服务可识别）
+        audit_model_cls.__module__ = DYNAMIC_AUDIT_MODULE
+        model_path = f"{DYNAMIC_AUDIT_MODULE}.{audit_model_cls.__name__}"
+        dynamic_audit_paths.append(model_path)
+        logger.debug(f"收集到动态审计模型：{model_path}")
+
+    logger.info(f"收集到{len(dynamic_audit_paths)}个动态审计模型")
+    return dynamic_audit_paths
 
 
-def get_tortoise_model_list(base_module: str = "azer_common.models", include_dynamic_audit: bool = True) -> List[str]:
+def get_tortoise_model_list(
+    base_module: str,
+    include_dynamic_audit: bool = True,
+    custom_exclude_files: Optional[Set[str]] = None,
+    custom_exclude_dirs: Optional[Set[str]] = None,
+    exclude_modules: Optional[List[str]] = None,
+) -> List[str]:
     """
-    获取完整的Tortoise模型导入列表（静态模型 + 动态审计模型）
-    :param base_module: 模型根模块
-    :param include_dynamic_audit: 是否包含动态审计模型
-    :return: 适配tortoise_config的models列表
+    【通用】获取完整的Tortoise模型导入列表（静态模型 + 动态审计模型）
+    微服务直接调用该函数即可生成完整模型列表
+    :param base_module: 微服务模型根模块（如 "my_service.models"）
+    :param include_dynamic_audit: 是否包含公共包的动态审计模型
+    :param custom_exclude_files: 微服务自定义排除文件
+    :param custom_exclude_dirs: 微服务自定义排除目录
+    :param exclude_modules: 微服务自定义排除子模块
+    :return: 适配Tortoise config的models列表
     """
-    # 收集静态模型（排除audit.dynamic）
-    static_models = collect_all_static_models(base_module=base_module, exclude_modules=["audit.dynamic"])
+    # 1. 收集微服务静态模型
+    static_models = collect_all_static_models(
+        base_module=base_module,
+        custom_exclude_files=custom_exclude_files,
+        custom_exclude_dirs=custom_exclude_dirs,
+        exclude_modules=exclude_modules,
+    )
 
-    # 可选：添加动态审计模型
+    # 2. 追加公共包动态审计模型（可选）
     if include_dynamic_audit:
-        static_models.extend(collect_dynamic_audit_models())
+        dynamic_audit_models = collect_dynamic_audit_models()
+        static_models.extend(dynamic_audit_models)
 
     return static_models
 
 
 def register_audit_models_to_tortoise():
     """
-    注册动态审计模型到Tortoise（确保ORM能识别）
-    需在Tortoise.init()前调用
+    【通用】将公共包中动态生成的审计模型注册到Tortoise（微服务初始化时调用）
+    需在Tortoise.init()之前调用
     """
-    from tortoise import Tortoise
+    from azer_common.models.audit.registry import _AUDIT_MODEL_REGISTRY
 
-    dynamic_module = importlib.import_module("azer_common.models.audit.dynamic")
-
-    # 将动态审计模型注册到Tortoise的模型注册表
+    registered_count = 0
     for audit_model_cls in _AUDIT_MODEL_REGISTRY.keys():
-        # 绑定模块（确保Tortoise识别）
-        audit_model_cls.__module__ = dynamic_module.__name__
-        # 注册到Tortoise
-        Tortoise.register_model(audit_model_cls)
+        try:
+            # 强制绑定模块（确保微服务Tortoise识别）
+            audit_model_cls.__module__ = DYNAMIC_AUDIT_MODULE
+            # 注册到Tortoise（兼容Tortoise所有版本）
+            if hasattr(Tortoise, "register_model"):
+                Tortoise.register_model(audit_model_cls)
+            registered_count += 1
+        except Exception as e:
+            logger.error(f"注册动态审计模型失败：{audit_model_cls.__name__}，错误：{e}")
 
-    logger.info(f"已注册{len(_AUDIT_MODEL_REGISTRY)}个动态审计模型到Tortoise")
+    logger.info(f"成功注册{registered_count}个动态审计模型到Tortoise（总计{len(_AUDIT_MODEL_REGISTRY)}个）")
