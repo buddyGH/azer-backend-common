@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 # 公共包默认排除规则（排除非模型文件/目录，微服务可追加/覆盖）
 DEFAULT_EXCLUDE_FILES = {
     "__init__.py",
-    "enums.py",
     "signals.py",
     "utils.py",
     "context.py",
