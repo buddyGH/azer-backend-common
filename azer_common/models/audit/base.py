@@ -31,6 +31,7 @@ class BaseAuditLog(BaseModel):
     class Meta:
         abstract = True
         indexes = [
+            ("tenant_id", "business_type", "operation_type", "operated_at"),
             ("tenant_id", "business_type", "operated_at"),
             ("operated_by_id", "operated_at"),
             ("business_id", "business_type"),
@@ -45,6 +46,9 @@ class BaseAuditLog(BaseModel):
     # 禁止物理删除
     async def delete(self, *args, **kwargs):
         raise PermissionError("审计日志不允许删除")
+
+    async def soft_delete(self, *args, **kwargs):
+        raise PermissionError("审计日志不允许软删除")
 
     async def to_dict(self) -> Dict[str, Any]:
         return {
