@@ -18,8 +18,6 @@ _AUDIT_MODEL_REGISTRY: Dict[Type[BaseModel], Tuple[str, list[str]]] = {}
 
 
 # 路径配置（区分审计模型/待审计模型）
-DEFAULT_TARGET_MODEL_MODULE = "models"  # 待审计业务模型的默认路径（如 RolePermission 在 models 下）
-DEFAULT_AUDIT_MODEL_MODULE = "models.audit"  # 审计模型自身的默认存放路径
 DYNAMIC_AUDIT_MODULE = "azer_common.models.audit.dynamic"  # 动态生成审计模型的存放模块（空文件）
 
 for audit_model_cls in _AUDIT_MODEL_REGISTRY.keys():
