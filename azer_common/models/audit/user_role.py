@@ -10,6 +10,4 @@ class UserRoleAudit(BaseAuditLog):
     class Meta:
         table = "azer_user_role_audit"
         table_description = "用户角色关联审计日志表"
-
-
-from azer_common.models.audit.signals import handle_user_role_save
+        indexes = BaseAuditLog.Meta.indexes + []

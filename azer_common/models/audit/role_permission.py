@@ -12,6 +12,4 @@ class RolePermissionAudit(BaseAuditLog):
     class Meta:
         table = "azer_role_permission_audit"
         table_description = "角色权限关联审计日志表"
-
-
-from azer_common.models.audit.signals import handle_role_permission_save
+        indexes = BaseAuditLog.Meta.indexes + []

@@ -29,13 +29,10 @@ class BaseAuditLog(BaseModel):
     tenant_id = fields.CharField(max_length=64, null=True, description="租户ID")
 
     class Meta:
-        abstract = True  # 抽象基类，不生成表
+        abstract = True
         indexes = [
-            # 高频查询索引：租户+业务类型+操作时间（核心）
             ("tenant_id", "business_type", "operated_at"),
-            # 辅助索引：操作人+操作时间
             ("operated_by_id", "operated_at"),
-            # 辅助索引：业务ID+业务类型（快速关联业务记录）
             ("business_id", "business_type"),
         ]
 

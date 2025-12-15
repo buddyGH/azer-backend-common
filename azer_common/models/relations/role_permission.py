@@ -1,8 +1,11 @@
 from tortoise import fields
+
+from azer_common.models.audit.registry import register_audit
 from azer_common.models.base import BaseModel
 from azer_common.utils.time import utc_now
 
 
+@register_audit(business_type="role_permission")
 class RolePermission(BaseModel):
     """角色权限关联表，管理角色与权限的授予关系"""
 

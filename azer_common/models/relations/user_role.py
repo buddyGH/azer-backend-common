@@ -1,8 +1,11 @@
 from tortoise import fields
+
+from azer_common.models.audit.registry import register_audit
 from azer_common.models.base import BaseModel
 from azer_common.utils.time import utc_now
 
 
+@register_audit(business_type="user_role", signals=["post_save", "post_delete"])
 class UserRole(BaseModel):
     """用户角色关联表，管理用户在租户下的角色分配关系"""
 

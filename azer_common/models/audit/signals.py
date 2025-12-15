@@ -1,39 +1,41 @@
+# azer_common/models/audit/signals.py
 import logging
-from typing import Type
+from typing import Optional, Type
 from importlib import import_module
-from tortoise.signals import post_save
 from tortoise.models import Model
-
-from azer_common.models.audit.context import get_audit_context, clear_audit_context
-from azer_common.models.relations.role_permission import RolePermission
-from azer_common.models.relations.user_role import UserRole
+from tortoise.exceptions import ConfigurationError
+from .context import get_audit_context, clear_audit_context, HasId
+from azer_common.models.audit import _AUDIT_MODEL_REGISTRY
 
 logger = logging.getLogger(__name__)
 
 
-def get_audit_model(business_type: str) -> Type[Model]:
-    """
-    自动匹配审计表：
-    - 业务类型：role_permission → 子模块：role_permission → 类：RolePermissionAudit
-    - 路径：azer_common.models.audit.{business_type} → 类：{驼峰}Audit
-    """
-    try:
-        sub_module_path = f"azer_common.models.audit.{business_type}"
-        sub_module = import_module(sub_module_path)
-        camel_case = "".join(word.capitalize() for word in business_type.split("_"))
-        audit_class_name = f"{camel_case}Audit"
-        audit_cls = getattr(sub_module, audit_class_name)
-        return audit_cls
-    except (ImportError, AttributeError) as e:
-        logger.error(f"获取审计表失败：业务类型={business_type}，错误={str(e)}")
-        return None
+# 抽象通用信号处理函数，避免重复
+async def _generic_audit_signal_handler(
+    sender: Type[HasId],  # 模型类（如 RolePermission）
+    instance: HasId,  # 业务实例
+    created: bool,  # 是否是新建（True=创建，False=更新）
+    using_db,  # 数据库连接（可忽略，仅接收）
+    update_fields: Optional[list],  # 更新字段列表（可忽略）
+    **kwargs,  # 兼容其他信号的扩展参数
+):
+    """通用审计信号处理函数，适配所有注册的模型"""
+    registry_value = _AUDIT_MODEL_REGISTRY.get(sender)
+    if not registry_value:
+        logger.warning(f"模型{sender.__name__}未注册审计，跳过日志生成")
+        return
+    # 提取元组中的第一个元素（业务类型字符串）
+    business_type = registry_value[0]
+
+    logger.debug(f"触发{sender.__name__} post_save信号：实例ID={instance.id}，创建标识={created}")
+    await _create_audit_log(instance, business_type)
 
 
-async def _create_audit_log(instance: Model, business_type: str):
-    """通用审计日志生成逻辑"""
+# 增加类型约束、字段校验
+async def _create_audit_log(instance: HasId, business_type: str):
+    """通用审计日志生成逻辑（优化版）"""
     logger.debug(f"开始生成审计日志：业务类型={business_type}，实例ID={instance.id}")
     context = get_audit_context()
-    logger.debug(f"当前审计上下文：{context}")
 
     if not context:
         logger.warning(f"审计日志生成失败：业务类型{business_type}无审计上下文，实例ID={instance.id}")
@@ -47,12 +49,16 @@ async def _create_audit_log(instance: Model, business_type: str):
         return
 
     audit_cls = get_audit_model(business_type)
-    logger.debug(f"匹配到的审计表类：{audit_cls}")
     if not audit_cls:
         logger.error(f"审计日志生成失败：未找到业务类型{business_type}的审计表，实例ID={instance.id}")
         return
 
     try:
+        # 校验外键字段是否存在，避免KeyError
+        fk_field = business_type
+        if not hasattr(audit_cls, fk_field):
+            raise ConfigurationError(f"审计模型{audit_cls.__name__}缺失外键字段{fk_field}")
+
         audit_kwargs = {
             "business_id": str(instance.id),
             "business_type": context.business_type,
@@ -67,29 +73,34 @@ async def _create_audit_log(instance: Model, business_type: str):
             "before_data": context.before_data,
             "after_data": context.after_data,
             "tenant_id": context.tenant_id,
-            f"{business_type}": instance,
+            fk_field: instance,
         }
 
         audit = await audit_cls.create(**audit_kwargs)
-        # 核心业务日志保留INFO，便于追溯
-        logger.debug(f"审计日志生成成功：业务类型={business_type}，审计ID={audit.id}，业务实例ID={instance.id}")
+        logger.info(f"审计日志生成成功：业务类型={business_type}，审计ID={audit.id}，业务实例ID={instance.id}")
+    except ConfigurationError as e:
+        logger.error(f"审计日志生成失败（配置错误）：业务类型={business_type}，实例ID={instance.id}，错误={str(e)}")
+        raise  # 配置错误需暴露，便于修复
     except Exception as e:
         logger.error(f"审计日志生成失败：业务类型={business_type}，实例ID={instance.id}，错误={str(e)}", exc_info=True)
-    finally:
-        if context.business_type == business_type:
-            clear_audit_context()
+        # 优化5：可选是否抛出异常（配置化）
+        if getattr(audit_cls, "audit_raise_error", False):
+            raise
 
 
-# ========== 信号装饰器 ==========
-@post_save(RolePermission)
-async def handle_role_permission_save(_sender, instance, _created, _using_db, _update_fields):
-    """RolePermission保存信号处理"""
-    logger.debug(f"触发RolePermission post_save信号：实例ID={instance.id}，创建标识={_created}")
-    await _create_audit_log(instance, "role_permission")
+def get_audit_model(business_type: str) -> Optional[Type[Model]]:
+    cache_key = f"audit_model_{business_type}"
+    if hasattr(get_audit_model, cache_key):
+        return getattr(get_audit_model, cache_key)
 
-
-@post_save(UserRole)
-async def handle_user_role_save(_sender, instance, _created, _using_db, _update_fields):
-    """UserRole保存信号处理"""
-    logger.debug(f"触发UserRole post_save信号：实例ID={instance.id}，创建标识={_created}")
-    await _create_audit_log(instance, "user_role")
+    try:
+        sub_module_path = f"azer_common.models.audit.{business_type}"
+        sub_module = import_module(sub_module_path)
+        camel_case = "".join(word.capitalize() for word in business_type.split("_"))
+        audit_class_name = f"{camel_case}Audit"
+        audit_cls = getattr(sub_module, audit_class_name)
+        setattr(get_audit_model, cache_key, audit_cls)
+        return audit_cls
+    except (ImportError, AttributeError) as e:
+        logger.error(f"获取审计表失败：业务类型={business_type}，错误={str(e)}")
+        return None
