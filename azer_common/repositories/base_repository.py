@@ -9,7 +9,7 @@ from azer_common.utils.time import utc_now
 T = TypeVar("T", bound=BaseModel)
 
 
-class IRepository(Generic[T]):
+class IBaseRepository(Generic[T]):
     """Repository 接口定义"""
 
     async def get_by_id(self, id: str) -> Optional[T]:
@@ -48,7 +48,7 @@ class IRepository(Generic[T]):
         raise NotImplementedError
 
 
-class BaseRepository(IRepository[T]):
+class TortoiseBaseRepository(IBaseRepository[T]):
     def __init__(self, model: Type[T]):
         self.model = model
         self.soft_delete_field = "is_deleted"
