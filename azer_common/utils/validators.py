@@ -13,7 +13,10 @@ def validate_username(value: str):
 # 验证邮箱格式
 def validate_email(value: str):
     """邮箱格式验证"""
-    if not re.match(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$", value):
+    if not re.match(
+        r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$",
+        value,
+    ):
         raise ValueError("邮箱格式无效，请输入正确的邮箱地址。")
 
 
@@ -29,6 +32,7 @@ def validate_password(value: str):
     """密码格式验证：8-64位，必须包含字母和数字"""
     if not value or value.strip() == "":
         raise ValueError("密码不能为空")
+    value = value.strip()
     if not re.match(r"^(?=.*[a-zA-Z])(?=.*\d).{8,64}$", value):
         raise ValueError("密码格式无效，必须包含字母和数字，长度为8到64个字符。")
 
@@ -193,13 +197,6 @@ def validate_age(value: int):
     """年龄验证：0-150岁"""
     if not isinstance(value, int) or value < 0 or value > 150:
         raise ValueError("年龄无效，应为0到150之间的整数")
-
-
-# 验证性别（0=未知，1=男，2=女）
-def validate_gender(value: int):
-    """性别验证：0=未知，1=男，2=女"""
-    if value not in [0, 1, 2]:
-        raise ValueError("性别无效，应为0、1或2")
 
 
 # 验证状态码（通常用于软删除等场景）
