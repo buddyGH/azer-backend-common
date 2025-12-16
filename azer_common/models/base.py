@@ -20,6 +20,8 @@ class BaseModel(models.Model):
     # 主键
     id = fields.UUIDField(pk=True, field_type="BINARY(16)", default=uuid7)
 
+    service_id = fields.CharField(max_length=50, null=True, description="创建/更新此记录的服务标识")
+
     # 审计字段
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
     updated_at = fields.DatetimeField(auto_now=True, description="更新时间")

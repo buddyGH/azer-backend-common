@@ -9,6 +9,7 @@ class BaseAuditLog(BaseModel):
     """审计日志通用基类（所有业务审计表继承）"""
 
     # 核心溯源字段
+    service_id = fields.CharField(max_length=50, null=True, description="触发此审计操作的服务标识")
     business_id = fields.CharField(max_length=64, description="关联的业务记录ID（通用字段，替代xxx_id）")
     business_type = fields.CharField(max_length=32, description="业务类型（如role_permission/user_role/tenant）")
     operation_type = fields.CharField(max_length=32, description="操作类型（create/update/delete/soft_delete）")

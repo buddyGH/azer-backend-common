@@ -36,6 +36,7 @@ class Tenant(BaseModel):
     class Meta:
         table = "azer_tenant"
         table_description = "租户表"
+        unique_together = [("code", "is_deleted")]
         indexes = [
             ("code", "is_enabled"),
             # 租户状态查询（多服务共用）

@@ -53,6 +53,7 @@ class Role(BaseModel):
         table = "azer_role"
         table_description = "角色表（多租户+权限继承）"
         ordering = ["level", "code"]
+        unique_together = [("tenant_id", "code", "is_deleted")]
         indexes = [
             ("tenant_id", "parent_id"),
             ("tenant_id", "is_default"),
@@ -62,7 +63,6 @@ class Role(BaseModel):
             ("tenant_id", "role_type", "is_enabled"),
             ("tenant_id", "level", "is_enabled"),
         ]
-        unique_together = [("tenant_id", "code", "is_deleted")]
 
     class PydanticMeta:
         include = {

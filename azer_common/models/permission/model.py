@@ -46,6 +46,7 @@ class Permission(BaseModel):
     class Meta:
         table = "azer_permission"
         table_description = "权限定义表"
+        unique_together = ("code", "tenant_id", "is_deleted")
         indexes = [
             # 分类+模块查询（权限管理界面）
             ("tenant_id", "category", "module", "is_enabled"),
@@ -58,7 +59,6 @@ class Permission(BaseModel):
             # 权限搜索优化
             ("code", "name", "tenant_id"),
         ]
-        unique_together = ("code", "tenant_id", "is_deleted")
 
     class PydanticMeta:
         include = {

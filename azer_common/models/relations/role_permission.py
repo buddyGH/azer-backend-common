@@ -46,7 +46,6 @@ class RolePermission(BaseModel):
         table_description = "角色权限关联表"
         unique_together = [
             ("role_id", "permission_id", "tenant_id", "is_deleted"),
-            ("role_id", "permission_id", "tenant_id"),
         ]
         indexes = [
             ("tenant_id", "role_id", "is_granted", "is_deleted"),

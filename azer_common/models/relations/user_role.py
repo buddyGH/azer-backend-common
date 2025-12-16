@@ -41,7 +41,7 @@ class UserRole(BaseModel):
     class Meta:
         table = "azer_user_role"
         table_description = "用户角色关系表（核心关联表）"
-        unique_together = [("user_id", "role_id", "tenant_id", "is_deleted"), ("user_id", "role_id", "tenant_id")]
+        unique_together = [("user_id", "role_id", "tenant_id", "is_deleted")]
         indexes = [
             ("tenant_id", "user_id", "is_assigned", "is_deleted"),
             ("tenant_id", "role_id", "is_assigned", "is_deleted"),
