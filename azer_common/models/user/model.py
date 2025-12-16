@@ -196,7 +196,3 @@ class User(BaseModel):
         if not self.preferences:
             self.preferences = {}
         self.preferences[key] = value
-
-
-# 导入信号
-import azer_common.models.user.signals

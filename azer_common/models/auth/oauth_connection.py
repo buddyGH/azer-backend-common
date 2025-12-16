@@ -37,6 +37,7 @@ class OAuthConnection(BaseModel):
         table = "azer_oauth_connection"
         table_description = "用户第三方登录连接表"
         indexes = [
+            ("credential_id", "platform"),  # 快速通过凭证ID查找用户
             ("platform", "platform_uid"),  # 快速通过平台ID查找用户
             ("is_active", "connected_at"),  # 清理不活跃连接
         ]

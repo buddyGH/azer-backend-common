@@ -1,6 +1,6 @@
 # azer_common/models/auth/model.py
 import argon2
-from argon2 import PasswordHasher
+from argon2 import PasswordHasher, Type
 from async_property import async_property
 from tortoise import fields
 from azer_common.models.auth.oauth_connection import OAuthConnection
@@ -13,7 +13,14 @@ from typing import List, Optional
 from azer_common.models import PUBLIC_APP_LABEL
 
 # 复用密码哈希单例
-PH_SINGLETON = PasswordHasher()
+PH_SINGLETON = PasswordHasher(
+    time_cost=2,  # 迭代次数
+    memory_cost=102400,  # 内存使用（KB）
+    parallelism=8,  # 并行线程数
+    hash_len=32,  # 哈希长度
+    salt_len=16,  # 盐长度
+    type=Type.ID,  # Argon2id（抗GPU/ASIC攻击）
+)
 
 
 class UserCredential(BaseModel):
@@ -72,6 +79,7 @@ class UserCredential(BaseModel):
     class Meta:
         table = "azer_user_credential"
         table_description = "用户认证表"
+        indexes = [("user_id", "mfa_enabled")]
 
     class PydanticMeta:
         include = {
@@ -230,6 +238,3 @@ class UserCredential(BaseModel):
             "failed_login_at": self.failed_login_at,
             "password_expired": self.is_password_expired(),
         }
-
-
-import azer_common.models.auth.signals

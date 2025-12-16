@@ -82,12 +82,16 @@ class RolePermission(BaseModel):
                 raise ValueError("生效开始时间必须早于结束时间")
 
         # 自动填充租户ID
-        if not self.tenant_id:
-            from azer_common.models.role.model import Role
+        if not self.tenant_id and self.role_id:
+            try:
+                from azer_common.models.role.model import Role
 
-            role = await Role.objects.filter(id=self.role_id).only("tenant_id").first()
-            if role:
+                role = await Role.objects.filter(id=self.role_id).only("tenant_id").first()
+                if not role:
+                    raise ValueError(f"角色ID {self.role_id} 不存在")
                 self.tenant_id = role.tenant_id
+            except Exception as e:
+                raise ValueError(f"获取角色租户信息失败: {str(e)}")
 
     async def soft_delete(self):
         """软删除关联关系，同步标记为未授予"""

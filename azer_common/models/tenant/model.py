@@ -37,6 +37,11 @@ class Tenant(BaseModel):
         table = "azer_tenant"
         table_description = "租户表"
         indexes = [("code", "is_enabled")]
+        unique_together = [
+            ("tenant_id", "user_id", "is_deleted"),
+            ("user_id", "is_primary", "is_deleted"),
+            ("tenant_id", "user_id"),
+        ]
 
     class PydanticMeta:
         include = {

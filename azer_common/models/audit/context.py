@@ -1,8 +1,13 @@
 # azer_common/models/audit/context.py
+import asyncio
+import logging
 from contextlib import asynccontextmanager  # 异步上下文管理器
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Protocol
+
+
+logger = logging.getLogger(__name__)
 
 
 class HasId(Protocol):
@@ -52,6 +57,10 @@ async def audit_context(**kwargs):
 
 
 def set_audit_context(context: AuditContext):
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        logger.warning("审计上下文设置不在异步事件循环中，可能影响审计日志生成")
     return _audit_context.set(context)
 
 
