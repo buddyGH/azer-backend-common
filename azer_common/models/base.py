@@ -20,14 +20,15 @@ class BaseModel(models.Model):
     # 主键
     id = fields.UUIDField(pk=True, field_type="BINARY(16)", default=uuid7)
 
-    service_id = fields.CharField(max_length=50, null=True, description="创建/更新此记录的服务标识")
+    service_id = fields.CharField(max_length=50, null=True, description="创建/更新此记录的服务标识", index=True)
+    data_version = fields.IntField(default=1, description="数据版本号（用于乐观锁）")
 
     # 审计字段
     created_at = fields.DatetimeField(auto_now_add=True, description="创建时间")
-    updated_at = fields.DatetimeField(auto_now=True, description="更新时间")
+    updated_at = fields.DatetimeField(auto_now=True, description="更新时间", index=True)
 
     # 软删除字段
-    is_deleted = fields.BooleanField(default=False, description="是否删除")
+    is_deleted = fields.BooleanField(default=False, description="是否删除", index=True)
     deleted_at = fields.DatetimeField(null=True, description="删除时间")
 
     # 元数据字段

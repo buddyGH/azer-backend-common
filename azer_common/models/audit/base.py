@@ -6,19 +6,25 @@ from azer_common.utils.time import utc_now
 
 
 class BaseAuditLog(BaseModel):
-    """审计日志通用基类（所有业务审计表继承）"""
+    """审计日志通用基类"""
 
     # 核心溯源字段
-    service_id = fields.CharField(max_length=50, null=True, description="触发此审计操作的服务标识")
-    business_id = fields.CharField(max_length=64, description="关联的业务记录ID（通用字段，替代xxx_id）")
-    business_type = fields.CharField(max_length=32, description="业务类型（如role_permission/user_role/tenant）")
-    operation_type = fields.CharField(max_length=32, description="操作类型（create/update/delete/soft_delete）")
-    operated_by_id = fields.CharField(max_length=64, null=True, description="操作人ID（冗余，避免关联查询）")
-    operated_by_name = fields.CharField(max_length=64, null=True, description="操作人名称（冗余）")
+    business_id = fields.CharField(max_length=64, description="关联的业务记录ID")
+    business_type = fields.CharField(max_length=32, description="业务类型")
+    operation_type = fields.CharField(max_length=32, description="操作类型")
+    operated_by_id = fields.CharField(max_length=64, null=True, description="操作人ID")
+    operated_by_name = fields.CharField(max_length=64, null=True, description="操作人名称")
     operated_at = fields.DatetimeField(default=utc_now, description="操作时间")
     operated_ip = fields.CharField(max_length=64, null=True, description="操作IP地址")
-    operated_terminal = fields.CharField(max_length=64, null=True, description="操作终端（web/app/api）")
-    request_id = fields.CharField(max_length=64, null=True, description="请求ID（链路追踪）")
+    operated_terminal = fields.CharField(max_length=64, null=True, description="操作终端")
+
+    # 分布式追踪字段
+    request_id = fields.CharField(max_length=64, null=True, description="请求ID（网关生成）")
+    trace_id = fields.CharField(max_length=100, null=True, description="分布式追踪ID")
+
+    # 微服务标识字段
+    source_service = fields.CharField(max_length=50, null=True, description="操作来源服务")
+    target_service = fields.CharField(max_length=50, null=True, description="操作目标服务")
 
     # 业务字段
     reason = fields.CharField(max_length=200, null=True, description="操作原因")
@@ -36,6 +42,8 @@ class BaseAuditLog(BaseModel):
             ("tenant_id", "business_type", "operated_at"),
             ("operated_by_id", "operated_at"),
             ("business_id", "business_type"),
+            ("trace_id", "source_service"),  # 分布式追踪查询
+            ("source_service", "target_service", "operated_at"),  # 服务间调用审计
         ]
 
     # 核心约束：审计日志不可修改/删除
