@@ -76,6 +76,10 @@ class UserCredential(BaseModel):
     # 设备管理
     trusted_devices = fields.JSONField(null=True, description="可信设备列表", default=dict)
 
+    # 合规相关
+    terms_accepted_at = fields.DatetimeField(null=True, description="条款接受时间")
+    terms_version = fields.CharField(max_length=20, null=True, description="接受的条款版本")
+
     class Meta:
         table = "azer_user_credential"
         table_description = "用户认证表"
@@ -101,6 +105,9 @@ class UserCredential(BaseModel):
             "login_count",
             "last_login_at",
             "last_login_ip",
+            # 合规相关
+            "terms_accepted_at",
+            "terms_version",
         }
 
     @property
@@ -237,4 +244,6 @@ class UserCredential(BaseModel):
             "failed_login_attempts": self.failed_login_attempts,
             "failed_login_at": self.failed_login_at,
             "password_expired": self.is_password_expired(),
+            "terms_accepted_at": self.terms_accepted_at,
+            "terms_version": self.terms_version,
         }
