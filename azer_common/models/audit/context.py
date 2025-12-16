@@ -20,6 +20,7 @@ class AuditContext:
 
     business_type: str  # 业务类型（如role_permission）
     operation_type: str  # 操作类型（create/update/delete）
+
     operated_by_id: Optional[str] = None
     operated_by_name: Optional[str] = None
     operated_ip: Optional[str] = None
@@ -30,6 +31,10 @@ class AuditContext:
     before_data: Optional[Dict[str, Any]] = None
     after_data: Optional[Dict[str, Any]] = None
     tenant_id: Optional[str] = None
+
+    trace_id: Optional[str] = None
+    source_service: Optional[str] = None
+    target_service: Optional[str] = None
 
 
 _audit_context: ContextVar[Optional[AuditContext]] = ContextVar("audit_context", default=None)

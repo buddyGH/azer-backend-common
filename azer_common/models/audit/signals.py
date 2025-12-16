@@ -58,10 +58,13 @@ async def _create_audit_log(instance: HasId, business_type: str):
             raise ConfigurationError(f"审计模型{audit_cls.__name__}缺失外键字段{fk_field}")
 
         audit_kwargs = {
+            "trace_id": context.trace_id,
+            "source_service": context.source_service,
+            "target_service": context.target_service,
             "business_id": str(instance.id),
             "business_type": context.business_type,
             "operation_type": context.operation_type,
-            "operated_by_id": context.operated_by_id,
+            "operated_by_id": str(context.operated_by_id),
             "operated_by_name": context.operated_by_name,
             "operated_ip": context.operated_ip,
             "operated_terminal": context.operated_terminal,
@@ -70,7 +73,7 @@ async def _create_audit_log(instance: HasId, business_type: str):
             "metadata": context.metadata,
             "before_data": context.before_data,
             "after_data": context.after_data,
-            "tenant_id": context.tenant_id,
+            "tenant_id": str(context.tenant_id),
             fk_field: instance,
         }
 
