@@ -13,7 +13,7 @@ class PasswordHistory(BaseModel):
     credential = fields.ForeignKeyField(
         model_name=PUBLIC_APP_LABEL + ".UserCredential",
         related_name="password_histories",
-        on_delete=fields.CASCADE,
+        on_delete=fields.RESTRICT,
         description="关联的核心认证凭证",
     )
 

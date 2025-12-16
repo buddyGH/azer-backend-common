@@ -30,7 +30,7 @@ class UserCredential(BaseModel):
     user = fields.OneToOneField(
         model_name=PUBLIC_APP_LABEL + ".User",
         related_name="credential",
-        on_delete=fields.CASCADE,
+        on_delete=fields.RESTRICT,
         description="关联用户",
     )
 
