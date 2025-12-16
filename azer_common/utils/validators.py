@@ -175,6 +175,14 @@ def validate_permission_code(value: str):
         )
 
 
+def validate_model_business_type(value: str):
+    """
+    业务类型格式验证：仅允许小写字母、下划线，长度3-32位
+    """
+    if not re.match(r"^[a-z_]{3,32}$", value):
+        raise ValueError(f"业务类型格式无效，应为3-32位小写字母/下划线组合，当前值：{value}")
+
+
 # === 新增验证器 ===
 
 
@@ -289,11 +297,3 @@ def validate_pagination(page: int, page_size: int, max_page_size: int = 100):
 
     if page_size < 1 or page_size > max_page_size:
         raise ValueError(f"每页数量无效，应为1到{max_page_size}之间的整数")
-
-
-def validate_model_business_type(value: str):
-    """
-    业务类型格式验证：仅允许小写字母、下划线，长度3-32位
-    """
-    if not re.match(r"^[a-z_]{3,32}$", value):
-        raise ValueError(f"业务类型格式无效，应为3-32位小写字母/下划线组合，当前值：{value}")
