@@ -46,6 +46,8 @@ class UserRole(BaseModel):
             ("tenant_id", "user_id", "is_assigned", "is_deleted"),
             ("tenant_id", "role_id", "is_assigned", "is_deleted"),
             ("expires_at", "is_assigned", "is_deleted"),
+            ("user_id", "tenant_id", "is_valid"),
+            ("role_id", "tenant_id", "is_assigned"),
         ]
 
     class PydanticMeta:

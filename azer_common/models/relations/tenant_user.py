@@ -38,6 +38,8 @@ class TenantUser(BaseModel):
             ("user_id", "is_primary", "is_assigned"),
             ("expires_at", "is_assigned", "is_deleted"),
             ("tenant_id", "user_id", "is_assigned"),
+            ("user_id", "is_assigned", "is_deleted"),
+            ("tenant_id", "expires_at", "is_assigned"),
         ]
 
     class PydanticMeta:

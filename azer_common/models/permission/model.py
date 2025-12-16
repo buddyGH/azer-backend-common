@@ -47,10 +47,16 @@ class Permission(BaseModel):
         table = "azer_permission"
         table_description = "权限定义表"
         indexes = [
-            ("category", "module"),
-            ("resource_type", "action"),
-            ("code", "is_enabled", "tenant_id"),
-            ("tenant_id", "category", "is_enabled"),
+            # 分类+模块查询（权限管理界面）
+            ("tenant_id", "category", "module", "is_enabled"),
+            # 资源类型+操作查询（权限检查）
+            ("tenant_id", "resource_type", "action", "is_enabled"),
+            # 编码查询（唯一性检查）
+            ("tenant_id", "code", "is_deleted"),
+            # 全局权限查询
+            ("tenant_id", "is_system", "is_enabled"),
+            # 权限搜索优化
+            ("code", "name", "tenant_id"),
         ]
         unique_together = ("code", "tenant_id", "is_deleted")
 

@@ -83,7 +83,18 @@ class UserCredential(BaseModel):
     class Meta:
         table = "azer_user_credential"
         table_description = "用户认证表"
-        indexes = [("user_id", "mfa_enabled")]
+        indexes = [
+            # 登录验证
+            ("user_id", "is_deleted"),
+            ("user_id", "failed_login_attempts", "failed_login_at"),
+            # 密码过期检查
+            ("password_expires_at", "is_deleted"),
+            # MFA状态查询
+            ("user_id", "mfa_enabled"),
+            ("mfa_enabled", "mfa_type", "is_deleted"),
+            # 验证状态查询
+            ("email_verified_at", "mobile_verified_at", "is_deleted"),
+        ]
 
     class PydanticMeta:
         include = {

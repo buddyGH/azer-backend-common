@@ -69,6 +69,14 @@ class User(BaseModel):
         table_description = "用户表"
         indexes = [
             ("status", "created_at"),
+            # 多微服务场景下，频繁查询活跃用户
+            ("status", "last_active_at", "is_deleted"),
+            # 用户搜索优化
+            ("username", "is_deleted"),
+            ("email", "is_deleted"),
+            ("mobile", "is_deleted"),
+            # 身份验证相关
+            ("identity_card", "is_deleted"),
         ]
 
     def __str__(self) -> str:

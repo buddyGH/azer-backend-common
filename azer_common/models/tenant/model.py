@@ -36,7 +36,15 @@ class Tenant(BaseModel):
     class Meta:
         table = "azer_tenant"
         table_description = "租户表"
-        indexes = [("code", "is_enabled")]
+        indexes = [
+            ("code", "is_enabled"),
+            # 租户状态查询（多服务共用）
+            ("is_enabled", "expired_at", "is_deleted"),
+            # 租户类型查询
+            ("tenant_type", "is_enabled", "is_deleted"),
+            # 系统租户快速识别
+            ("is_system", "is_enabled"),
+        ]
 
     class PydanticMeta:
         include = {

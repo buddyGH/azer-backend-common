@@ -52,6 +52,8 @@ class RolePermission(BaseModel):
             ("tenant_id", "role_id", "is_granted", "is_deleted"),
             ("tenant_id", "permission_id", "is_granted", "is_deleted"),
             ("is_granted", "effective_to", "is_deleted"),
+            ("role_id", "is_valid", "tenant_id"),
+            ("permission_id", "is_granted", "tenant_id"),
         ]
 
     class PydanticMeta:

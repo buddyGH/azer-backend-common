@@ -58,6 +58,9 @@ class Role(BaseModel):
             ("tenant_id", "is_default"),
             ("tenant_id", "is_enabled", "is_deleted"),
             ("level", "tenant_id"),
+            ("tenant_id", "code", "is_deleted"),
+            ("tenant_id", "role_type", "is_enabled"),
+            ("tenant_id", "level", "is_enabled"),
         ]
         unique_together = [("tenant_id", "code", "is_deleted")]
 
